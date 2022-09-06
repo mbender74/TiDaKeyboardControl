@@ -20,7 +20,7 @@
 #import "TiViewProxy+KeyboardControl.h"
 #import "ItSmcDakeyboardcontrolModule.h"
 
-#import "DAKeyboardControl.h"
+//#import "DAKeyboardControl.h"
 #import "TiBase.h"
 #import "TiHost.h"
 #import "TiComplexValue.h"
@@ -34,144 +34,303 @@
 #import "TiUIListView.h"
 #import <TitaniumKit/TiUtils.h>
 #import <TitaniumKit/TiViewTemplate.h>
-
+#import "BABFrameObservingInputAccessoryView.h"
+#import <TitaniumKit/TiAnimation.h>
 #import <TiUtils.h>
 #import <objc/runtime.h>
 
 @implementation TiViewProxy (KeyboardControl)
 
-
+DEFINE_DEF_PROP(textfield, nil);
 DEFINE_DEF_PROP(lockedViews, nil);
 CGPoint initialContentOffset;
 BOOL initialContentOffsetValid;
+BOOL panningSet;
+BOOL manualKeyboardResize;
+BOOL keyboardVisible;
+BOOL keyboardwillHide;
+BOOL keyboardwillShow;
 int status;
 int lastShiftValue = 0;
 float lastY = 0;
 int lastKeyboardHeight = 0;
 int maxKeyBoardHeight = 0;
 int minKeyBoardHeight = 0;
-float nextDirection = 0;
+NSLayoutConstraint *toolbarContainerVerticalSpacingConstraint;
+BABFrameObservingInputAccessoryView *inputView;
+CGRect inputViewFrame;
+TiViewProxy * toolbarViewProxy;
+TiUIView * toolbarView;
+UITextView *textview;
+UITextField *textField;
+float lastInputViewFrameHeight = 0;
+float lastKeyBoardViewFrameHeight = 0;
+CGRect lastInputAccessoryViewFrame;
+double keyboardTransitionDuration;
+float keyboardTriggerOffset;
+CGRect initalToolbarViewFrame;
+float initialKeyboardTriggerOffset;
+float initialBottomValue = 0;
+CGRect windowRect;
+CGFloat windowHeight;
+id safeAreaValue;
+BOOL keyboardPanningOn;
+static void *ToolbarFrameObservingContext = &ToolbarFrameObservingContext;
+UIViewAnimationCurve animationCurve;
 
-- (void)setKeyboardPanning:(id)args
+- (void)initPanning
 {
-    ENSURE_UI_THREAD(setKeyboardPanning, args);
-    
-    BOOL oldValue = [self keyboardPanning];
-    BOOL newValue = [TiUtils boolValue:args def:NO];
-    
-    [self replaceValue:[NSNumber numberWithBool:newValue]
-                forKey:@"keyboardPanning"
-          notification:NO];
-    
-    if (newValue && !oldValue)
-    {
-        [self setupKeyboardPanning];
-    }
-    else if (!newValue && oldValue)
-    {
-        [self teardownKeyboardPanning];
-    }
+        if ([self viewAttached]) {
+            if (keyboardPanningOn)
+            {
+                [self setupKeyboardPanning];
+            }
+            else {
+                [self teardownKeyboardPanning];
+            }
+        }
+        else {
+            [self performSelector:@selector(initPanning) withObject:self afterDelay:0.16f];
+        }
 }
 
 
-- (BOOL)keyboardPanning
-{
-    id value = [self valueForUndefinedKey:@"keyboardPanning"];
-    
-    
-    
 
-    if (value == nil || value == [NSNull null] || ![value respondsToSelector:@selector(boolValue)])
-    {
-        return NO;
+- (id)listSubviewsOfView:(UIView *)view {
+    NSArray *subviews = [view subviews];
+
+    for (UIView *subview in subviews) {
+        if ([subview isKindOfClass:[UITextView class]]){
+            return (UITextView*)subview;
+        }
+        else if ([subview isKindOfClass:[UITextField class]]){
+            return (UITextField*)subview;
+        }
+        else {
+            [self listSubviewsOfView:subview];
+        }
     }
-    else
-    {
-        return [value boolValue];
+}
+
+-(id) findTextView {
+    TiViewProxy * toolbarViewProxy = [self textfield];
+
+    if (toolbarViewProxy != nil) {
+        UIView * proxyView = [toolbarViewProxy view];
+        return [self listSubviewsOfView:proxyView];
+    }
+    else {
+        return nil;
     }
 }
 
 - (void)setupKeyboardPanning
 {
-    
-    [self replaceValue:self.view
-                forKey:@"keyboardPanningView"
-          notification:NO];
-
-    __weak TiViewProxy *weakSelf = self;
-
-//    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
-//    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
-    
-    [self.view addKeyboardPanningWithActionHandler:^(CGRect keyboardFrameInView, BOOL opening, BOOL closing) {
-        [weakSelf fireEventForKeyboardFrameInView:keyboardFrameInView];
-        [weakSelf updateKeyboardPanningLockedViews:keyboardFrameInView];
-    }];
-    
-    
-//    [self.view addKeyboardPanningWithFrameBasedActionHandler:^(CGRect keyboardFrameInView, BOOL opening, BOOL closing) {
-//            /*
-//             Try not to call "self" inside this block (retain cycle).
-//             But if you do, make sure to remove DAKeyboardControl
-//             when you are done with the view controller by calling:
-//             [self.view removeKeyboardControl];
-//             */
-//
-////            CGRect toolBarFrame = toolBar.frame;
-////            toolBarFrame.origin.y = keyboardFrameInView.origin.y - toolBarFrame.size.height;
-////            toolBar.frame = toolBarFrame;
-////
-////            CGRect tableViewFrame = tableView.frame;
-////            tableViewFrame.size.height = toolBarFrame.origin.y;
-////            tableView.frame = tableViewFrame;
-//
-//        [weakSelf fireEventForKeyboardFrameInView:keyboardFrameInView];
-//        [weakSelf updateKeyboardPanningLockedViews:keyboardFrameInView];
-//
-//
-//        } constraintBasedActionHandler:nil];
-    
-    
-    
-//    [self.view addKeyboardNonpanningWithActionHandler:^(CGRect keyboardFrameInView, BOOL opening, BOOL closing) {
-//        [weakSelf fireEventForKeyboardFrameInView:keyboardFrameInView];
-//        [weakSelf updateKeyboardPanningLockedViews:keyboardFrameInView];
-//    }];
-    
-}
-
-
-
-
-- (void)teardownKeyboardPanning
-{
-    TiUIView * panningView = [self valueForKey:@"keyboardPanningView"];
-    [panningView removeKeyboardControl];
-    
+    lastInputAccessoryViewFrame = CGRectZero;
     lastShiftValue = 0;
     lastY = 0;
     lastKeyboardHeight = 0;
     maxKeyBoardHeight = 0;
     minKeyBoardHeight = 0;
-    nextDirection = 0;
+    inputView = nil;
+    inputViewFrame = CGRectZero;
+    manualKeyboardResize = false;
+    panningSet = false;
+    keyboardVisible = false;
+    keyboardwillHide = false;
+    initalToolbarViewFrame = CGRectZero;
+    windowRect = self.view.window.frame;
+    windowHeight = windowRect.size.height;
+    
+    safeAreaValue = [self valueForUndefinedKey:@"safeArea"];
+    if (safeAreaValue == nil || safeAreaValue == [NSNull null]){
+        safeAreaValue = 0;
+    }
+
+    __weak TiViewProxy *weakSelf = self;
+    
+    toolbarViewProxy = [[self lockedViews] objectAtIndex:0];
+    toolbarView  = [toolbarViewProxy view];
+    initialBottomValue = [TiUtils floatValue:[toolbarViewProxy valueForKey:@"bottom"] def:0];
+    
+    initalToolbarViewFrame = toolbarView.frame;
+    initialKeyboardTriggerOffset = keyboardTriggerOffset;
+
+    
+    [toolbarView addObserver:self forKeyPath:@"bounds" options:0 context:ToolbarFrameObservingContext];
+
+    TiViewProxy * proxy = [[self lockedViews] objectAtIndex:1];
+    TiUIView * proxyView = [proxy view];
+    
+    UITableView *sv = nil;
+    
+    if ([proxyView isKindOfClass:[TiUIListView class]] || [proxyView isKindOfClass:[TiUITableView class]] || [NSStringFromClass([proxyView class])  isEqual: @"TiCollectionviewCollectionView"]) {
+        
+        if ([proxyView isKindOfClass:[TiUITableView class]]){
+            object_setClass(sv, [UITableView class]);
+            sv = (UITableView *)[(TiUITableView*)proxyView tableView];
+        }
+        else if ([proxyView isKindOfClass:[TiUIListView class]]){
+            object_setClass(sv, [UITableView class]);
+            sv = [(TiUIListView*)proxyView tableView];
+        }
+
+        else if ([NSStringFromClass([proxyView class])  isEqual: @"TiCollectionviewCollectionView"]){
+            if ([proxyView respondsToSelector:@selector(collectionView)]){
+                object_setClass(sv, [UICollectionView class]);
+                sv = [proxyView performSelector:@selector(collectionView)];
+            }
+        }
+
+        else {
+            object_setClass(sv, [TiUIScrollViewImpl class]);
+            sv = [(TiUIScrollView*)proxyView scrollView];
+        }
+        
+        
+        if (panningSet == false){
+            panningSet = true;
+            [(UIScrollView *)sv setKeyboardDismissMode:UIScrollViewKeyboardDismissModeInteractive];
+           // [(UIScrollView *)sv setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentAutomatic];
+        }
+    }
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidHide:) name:UIKeyboardDidHideNotification object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidShow:) name:UIKeyboardDidShowNotification object:nil];
+
+    
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
+
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
+
+    inputView = [[BABFrameObservingInputAccessoryView alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, keyboardTriggerOffset)];
+    inputViewFrame = inputView.frame;
+    lastInputViewFrameHeight = inputViewFrame.size.height;
+    inputView.userInteractionEnabled = NO;
+
+    id enterview = [self findTextView];
+
+    if ([enterview isKindOfClass:[UITextField class]]){
+        textField = (UITextField *)enterview;
+        textField.inputAccessoryView = inputView;
+    }
+    else if ([enterview isKindOfClass:[UITextView class]]){
+        textview = (UITextView *)enterview;
+        textview.inputAccessoryView = inputView;
+    }
+
+    inputView.inputAcessoryViewFrameChangedBlock = ^(CGRect inputAccessoryViewFrame){
+        
+        CGFloat value = CGRectGetHeight(self.view.frame) - CGRectGetMinY(inputAccessoryViewFrame);
+            
+        [self updateKeyboardPanningViews:inputAccessoryViewFrame withScrollView:(UIScrollView *)sv withBottomValue:value];
+            
+        lastInputAccessoryViewFrame = inputAccessoryViewFrame;
+    };
+    
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+    
+    if (object == toolbarView && ([keyPath isEqualToString:@"bounds"]) && context == ToolbarFrameObservingContext){
+        
+        float newHeight = initialKeyboardTriggerOffset + (toolbarView.frame.size.height - initalToolbarViewFrame.size.height);
+
+        if (inputViewFrame.size.height != newHeight) {
+            manualKeyboardResize = true;
+            inputViewFrame.size.height = newHeight;
+            inputView.frame = inputViewFrame;
+            //NSLog ( @" inputViewFrame.size.height: %f", newHeight );
+        }
+    }
+}
+
+
+- (void)keyboardDidShow:(NSNotification *)notification
+{
+    keyboardVisible = true;
+    keyboardwillHide = false;
+}
+
+- (void)keyboardDidHide:(NSNotification *)notification
+{
+    keyboardVisible = false;
+    keyboardwillHide = false;
+}
+
+- (void)keyboardWillShow:(NSNotification *)notification
+{
+    CGRect keyboardEndFrameWindow;
+    [[notification.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] getValue: &keyboardEndFrameWindow];
+    
+    keyboardwillHide = false;
+
+    [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] getValue:&animationCurve];
+
+    [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
+    
+    [self fireEventForKeyboardFrameInView:keyboardEndFrameWindow visible:true];
+
+    lastShiftValue = 0;
+}
+
+- (void)keyboardWillHide:(NSNotification *)notification
+{
+    keyboardwillHide = true;
+    CGRect keyboardEndFrameWindow;
+    [[notification.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] getValue: &keyboardEndFrameWindow];
+
+    [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] getValue:&animationCurve];
+
+    [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
+    
+    [self fireEventForKeyboardFrameInView:keyboardEndFrameWindow visible:false];
+
+}
+
+
+
+- (void)teardownKeyboardPanning
+{
+    panningSet = false;
+    [toolbarView removeObserver:self forKeyPath:@"bounds" context:ToolbarFrameObservingContext];
+
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillHideNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardWillShowNotification object:nil];
+
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardDidHideNotification object:nil];
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardDidShowNotification object:nil];
+    safeAreaValue = nil;
+    keyboardVisible = false;
+    lastShiftValue = 0;
+    lastY = 0;
+    lastKeyboardHeight = 0;
+    maxKeyBoardHeight = 0;
+    minKeyBoardHeight = 0;
+    inputView = nil;
+    inputViewFrame = CGRectZero;
 }
 
 
 
 
-- (void)fireEventForKeyboardFrameInView:(CGRect)keyboardFrameInView
+- (void)fireEventForKeyboardFrameInView:(CGRect)keyboardFrameInView visible:(BOOL)status
 {
     if (![self _hasListeners:@"keyboardchange"]) {
         return;
     }
-    
+
     NSNumber * keyboardWidth = [NSNumber numberWithFloat:keyboardFrameInView.size.width];
-    NSNumber * keyboardHeight = [NSNumber numberWithFloat:keyboardFrameInView.size.height];
+    NSNumber * keyboardHeight = [NSNumber numberWithFloat:keyboardFrameInView.size.height-inputViewFrame.size.height];
     NSNumber * keyboardX = [NSNumber numberWithFloat:keyboardFrameInView.origin.x];
-    NSNumber * keyboardY = [NSNumber numberWithFloat:keyboardFrameInView.origin.y];
+    NSNumber * keyboardY = [NSNumber numberWithFloat:keyboardFrameInView.origin.y-inputViewFrame.size.height];
     
     NSMutableDictionary * event = [NSMutableDictionary dictionary];
-    
+
+    [event setValue:[NSNumber numberWithBool:status]
+             forKey:@"visible"];
+
     [event setValue:keyboardHeight
              forKey:@"height"];
     
@@ -190,539 +349,293 @@ float nextDirection = 0;
 
 
 
-- (void)updateKeyboardPanningLockedViews:(CGRect)keyboardFrameInView
+
+- (void)updateKeyboardPanningViews:(CGRect)keyboardFrameInView withScrollView:(UIScrollView*)scrollView withBottomValue:(CGFloat)bottomvalue
 {
-    ENSURE_UI_THREAD(updateKeyboardPanningLockedViews, keyboardFrameInView);
-    
-    NSArray * lockedViews = [self lockedViews];
-    
-    ENSURE_TYPE_OR_NIL(lockedViews, NSArray);
-    
-    if (lockedViews == nil || [lockedViews count] == 0)
-    {
-        return;
-    }
-    
-  //  float keyboardHeight = keyboardFrameInView.size.height;
-    float keyboardY = keyboardFrameInView.origin.y;
-    float height = self.view.frame.size.height;
+    float keyboardHeight = keyboardFrameInView.size.height - inputViewFrame.size.height;
+    CGRect toolbarViewFrame = toolbarView.frame;
+    float keyboardY = keyboardFrameInView.origin.y + inputViewFrame.size.height;
 
-    float shift = (height - keyboardY);
-    float keyboardHeight = shift;
- 
-    CGPoint initialContentOffset;
-    
-
-    if (minKeyBoardHeight == 0){
-        minKeyBoardHeight = (int)keyboardHeight;
-    }
-
-    
-    id toolbarHeight = [self valueForUndefinedKey:@"toolBarHeight"];
-    if (toolbarHeight == nil || toolbarHeight == [NSNull null]){
-        toolbarHeight = 0;
-    }
-    
-    id value = [self valueForUndefinedKey:@"safeArea"];
-    if (value == nil || value == [NSNull null]){
-        value = 0;
-    }
-  //  NSLog ( @"VALUE: %f", value);
-
-    
-//    float shift = keyboardHeight <= 0 ? 0 : (height - keyboardY);
-    int counter = 0;
-    
-    
-    
-    CGPoint scrollPoint = CGPointZero;
-    
-//    NSLog ( @" keyboardSize native: %f\n\n", thiskeyboardSize.height);
-
-    
-    for (TiViewProxy * proxy in lockedViews) {
+    if (manualKeyboardResize == false){
         
+        float height = self.view.frame.size.height;
         
+        float shift = (height - keyboardY);
         
-        if (proxy != nil)
-        {
+        CGPoint initialContentOffset;
+        
+        if (minKeyBoardHeight == 0){
+            minKeyBoardHeight =  (int)keyboardHeight;
+        }
+                       
+        float frameOriginY = toolbarViewFrame.origin.y;
+        float SizeY = self.view.frame.size.height - toolbarViewFrame.size.height;
+        if (lastY == 0){
+            lastY = frameOriginY;
+        }
+        
+        if (lastShiftValue < shift){
             
-            if (counter == 1) {
-//                NSLog ( @" \n\n keyboardHeight  keyboardY  native: %f  %f", keyboardHeight, keyboardY);
-
-                TiUIView * proxyView = [proxy view];
+            if ((shift > [safeAreaValue floatValue]) && (shift > (shift - [safeAreaValue floatValue])) ){
+                shift = (shift + initialKeyboardTriggerOffset);
                 
-             //   if ([proxyView isKindOfClass:[TiUIScrollView class]]) {
-
-                //    NSLog ( @"proxyView: %@", proxyView);
-
-                UITableView *sv = nil;
-                
-                if ([proxyView isKindOfClass:[TiUIListView class]] || [proxyView isKindOfClass:[TiUITableView class]] || [NSStringFromClass([proxyView class])  isEqual: @"TiCollectionviewCollectionView"]) {
-                    
-                    TiViewProxy * toolbarViewProxy = [lockedViews objectAtIndex:0];
-                    TiUIView * toolbarView  = [toolbarViewProxy view];
-                    CGRect toolbarViewFrame = toolbarView.frame;
-
-
-                  //  tableDateLength = [[self valueForUndefinedKey:@"tableDateLength"] integerValue] - 1;
-                    
-                    if ([proxyView isKindOfClass:[TiUITableView class]]){
-                        object_setClass(sv, [UITableView class]);
-                        sv = (UITableView *)[(TiUITableView*)proxyView tableView];
-                    }
-                    else if ([proxyView isKindOfClass:[TiUIListView class]]){
-                        object_setClass(sv, [UITableView class]);
-                        sv = [(TiUIListView*)proxyView tableView];
-                    }
-                    
-                    
-                    //        NSString *strClass = NSStringFromClass([proxyView class]);
-                    //
-                    //        if ([NSStringFromClass([proxyView class])  isEqual: @"TiCollectionviewCollectionView"]){
-                    //            NSLog ( @"TiUITableView :");
-                    //            return YES;
-                    //        }
-                    
-                    
-                  //  TiUIScrollViewImpl* sv = [(TiUIScrollView*)proxyView scrollView];
-                    else if ([NSStringFromClass([proxyView class])  isEqual: @"TiCollectionviewCollectionView"]){
-                        NSLog ( @"TiCollectionviewCollectionView :");
-                        if ([proxyView respondsToSelector:@selector(collectionView)]){
-                            object_setClass(sv, [UICollectionView class]);
-
-                            sv = [proxyView performSelector:@selector(collectionView)];
-                            NSLog ( @"TiCollectionviewCollectionView Object : %@",sv);
-
-                        }
-                    }
-   
-                    else {
-                        object_setClass(sv, [TiUIScrollViewImpl class]);
-                        sv = [(TiUIScrollView*)proxyView scrollView];
-                    }
-                    
-                    
-                  //    NSLog ( @"safeArea: %f", [value floatValue]);
-                  //     NSLog ( @"Shift - safeArea: %f", (shift - [value floatValue]));
-                    
-                   //  NSLog ( @"- ORG Shift: %f", -shift);
-                    nextDirection = shift;
-                  //  sv.contentInset = UIEdgeInsetsMake(0, 0, shift + toolbarViewFrame.size.height, 0);
-                    
-
-                    
-
-                    
-                 //   if (shift > [value floatValue]){
-
-
-                    
-                         //  CGRect rect = [toolbarView frame];
-//                            rect.origin.x = toolbarViewFrame.origin.x;
-//                            rect.origin.y = 642 - shift;
-//                            [toolbarView setFrame:rect];
-
-                    
-                    float frameOriginY = toolbarViewFrame.origin.y;
-                    float SizeY = self.view.frame.size.height - toolbarViewFrame.size.height;
-                    if (lastY == 0){
-                        lastY = frameOriginY;
-                    }
-
-
-
-                    
-                  //  if (frameOriginY < SizeY){
-
-                        
-                        
-                            if (lastShiftValue < shift){
-                            //    NSLog ( @"lastShiftValue < shift");
-
-
-
-                                if ((shift > [value floatValue]) && (shift > (shift - [value floatValue])) ){
-                                    shift = (shift - [value floatValue]);
-                                //    NSLog ( @"***** YOYO shift: %i", shift);
-
-                                }
-
-                                else if ((shift > [value intValue]) && (shift <= (shift - [value floatValue])) ){
-                                    shift = [value floatValue];
-                                 //   NSLog ( @"#### FINAL shift - value: %i", (shift - [value floatValue]));
-                                  //  NSLog ( @"++++ FINAL shift: %i", shift);
-                                }
-
-                                else {
-                                    shift = 0.0;
-                                 //   NSLog ( @"++++ ELSE shift: %i", shift);
-                                }
-
-
-                               // lastShiftValue = shift;
-
-                            }
-
-                            else {
-
-                              //  NSLog ( @"lastShiftValue > shift");
-
-
-                                if (shift > [value floatValue]){
-                                    shift = (shift - [value floatValue]);
-                                }
-
-                                //shift = (shift + [value floatValue]);
-                                //lastShiftValue = shift;
-                            }
-
-                        
-                         //   NSLog ( @"- FRAME ORIGIN Y: %i", frameOriginY);
-
-                    
-//                    if (lastShiftValue == shift){
-//                       // NSLog ( @"\n lastShiftValue  shift: %f  %f",lastShiftValue,shift);
-//                        int newBottom;
-//                        if (shift > 0){
-//                            newBottom = (int)(keyboardHeight - [value floatValue]);
-//                        }
-//                        else {
-//                            newBottom = 0;
-//                        }
-//                        toolbarViewProxy.bottom = [NSNumber numberWithInt:newBottom];
-//                    }
-
-
-                    if (lastShiftValue != shift){
-                                                            
-                    
-                            if ((shift >= 0) && (frameOriginY < height)){
-                                 initialContentOffset = sv.contentOffset;
-                                    NSLog ( @"\n initialContentOffset %f", initialContentOffset.y);
-
-                                if (keyboardHeight > minKeyBoardHeight){
-                                    maxKeyBoardHeight = (int)keyboardHeight;
-                                }
-                                if (keyboardHeight == minKeyBoardHeight && lastKeyboardHeight > 0 && lastKeyboardHeight == maxKeyBoardHeight && maxKeyBoardHeight > 0){
-                                    [UIView setAnimationsEnabled:NO];
-                                //    NSLog ( @"\nsmall keyboardsize %f", keyboardHeight);
-                                   // initialContentOffset.y =  initialContentOffset.y - [value floatValue];
-
-                                }
-                                else if (keyboardHeight == maxKeyBoardHeight && lastKeyboardHeight > 0 && maxKeyBoardHeight > minKeyBoardHeight && lastKeyboardHeight == minKeyBoardHeight){
-                                    [UIView setAnimationsEnabled:NO];
-                                //    NSLog ( @"\nhughe keyboardsize %f", keyboardHeight);
-                               }
-                                
-                                
-                                [sv setContentInset:UIEdgeInsetsMake(sv.contentInset.top, 0, shift + toolbarViewFrame.size.height - [value floatValue], 0)];
-                                sv.scrollIndicatorInsets = sv.contentInset;
-                                //                                    [sv setContentInset:UIEdgeInsetsMake(sv.contentInset.top, 0, shift + toolbarViewFrame.size.height - [value floatValue], 0)];
-
-                                
-                                id bottomInset = [NSNumber numberWithDouble: (shift + toolbarViewFrame.size.height - [value floatValue])];
-                                                               
-                                [self replaceValue:bottomInset
-                                            forKey:@"lastInsetBottom"
-                                      notification:NO];
-                                NSLog ( @"\n bottomInset %i", bottomInset);
-
-                                
-                                CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0f, -shift);
-                                Ti2DMatrix * matrix = [[Ti2DMatrix alloc] initWithMatrix:transform];
-
-                                [toolbarViewProxy replaceValue:0 forKey:@"duration" notification:YES];
-                                [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
-                                [toolbarView setTransform_:matrix];
-
-
-                                
-                                CGFloat y = keyboardFrameInView.origin.y;
-                                CGFloat tabBarY = toolbarViewFrame.origin.y;
-                             //   NSLog ( @"\n\n y  tabBarY: %f  %f", y, (tabBarY + toolbarViewFrame.size.height - [value floatValue]));
-                                if (y < (tabBarY + toolbarViewFrame.size.height - [value floatValue])) {
-                                    CGFloat offsetY = (tabBarY - y - [value floatValue]);
-                                  //  CGPoint offset = CGPointMake(0, initialContentOffset.y);
-                                    CGPoint offset = CGPointMake(0, initialContentOffset.y + offsetY+toolbarViewFrame.size.height);
-                                [self replaceValue:[NSNumber numberWithFloat:initialContentOffset.y + offsetY+toolbarViewFrame.size.height]
-                                            forKey:@"lastOffset"
-                                      notification:NO];
-
-                                    sv.contentOffset = offset;
-                                    [UIView setAnimationsEnabled:YES];
-
-                                //     NSLog ( @"y < tabBarY: %f", offsetY);
-
-                                }
-                              //  else {
-//                                    CGFloat offsetY = (tabBarY - y - [value floatValue]);
-//                                    CGPoint offset = CGPointMake(0, initialContentOffset.y + offsetY+toolbarViewFrame.size.height);
-//
-//                                    sv.contentOffset = offset;
-
-                                    //NSLog ( @"y > tabBarY: %f", offsetY);
-                             //   }
-                                
-                                lastShiftValue = shift;
-                                lastKeyboardHeight = (int)keyboardHeight;
-
-                                //if (keyboardHeight > minKeyBoardHeight){
-                                 //   maxKeyBoardHeight = keyboardHeight;
-                               // }
-                                
-                                
-//                                if (keyboardHeight == minKeyBoardHeight && lastKeyboardHeight > 0){
-//                                    [UIView setAnimationsEnabled:NO];
-//                                    int newBottom = (int)(keyboardHeight - [value floatValue]);
-//
-//                                    [sv setContentInset:UIEdgeInsetsMake(sv.contentInset.top, 0, shift + toolbarViewFrame.size.height - [value floatValue], 0)];
-//                                    sv.scrollIndicatorInsets = sv.contentInset;
-//
-//
-//                                    toolbarViewProxy.bottom = [NSNumber numberWithInt:newBottom];
-//                                    NSLog ( @"\n KEyboard up and Hight is greater Y: %i",newBottom);
-//
-//                                    toolbarView  = [toolbarViewProxy view];
-//                                    toolbarViewFrame = toolbarView.frame;
-//
-//                                    initialContentOffset = sv.contentOffset;
-//
-//
-//
-//
-//                                    CGSize svContentSize = sv.contentSize;
-//                                    CGSize svBoundSize = sv.bounds.size;
-//                                    CGFloat svBottomInsets = sv.contentInset.bottom;
-//                                    CGFloat bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + [value floatValue];
-//                                    CGFloat bottomWidth = svContentSize.width - svBoundSize.width;
-//
-//                                    CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
-//
-//                                   // [sv setContentOffset:newOffset];
-//                                    [sv setContentOffset:newOffset animated:NO];
-//
-//
-//                                    lastY = toolbarViewFrame.origin.y;
-//
-//                                    lastKeyboardHeight = (int)keyboardHeight;
-//                                }
-//
-//
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-                                
-//                                else if (keyboardHeight == maxKeyBoardHeight && lastKeyboardHeight > 0 && maxKeyBoardHeight > minKeyBoardHeight){
-//                                    [UIView setAnimationsEnabled:NO];
-//                                    int newBottom = (int)(keyboardHeight - [value floatValue]);
-//
-//                                    [sv setContentInset:UIEdgeInsetsMake(sv.contentInset.top, 0, shift + toolbarViewFrame.size.height - [value floatValue], 0)];
-//                                    sv.scrollIndicatorInsets = sv.contentInset;
-//
-//
-//                                    toolbarViewProxy.bottom = [NSNumber numberWithInt:newBottom];
-//                                    NSLog ( @"\n lastKeyboardHeight == maxKeyBoardHeight Y: %i",newBottom);
-//
-//                                    toolbarView  = [toolbarViewProxy view];
-//                                    toolbarViewFrame = toolbarView.frame;
-//
-//                                    initialContentOffset = sv.contentOffset;
-//
-//
-//
-//                                    CGSize svContentSize = sv.contentSize;
-//                                    CGSize svBoundSize = sv.bounds.size;
-//                                    CGFloat svBottomInsets = sv.contentInset.bottom;
-//                                    CGFloat bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + [value floatValue];
-//                                    CGFloat bottomWidth = svContentSize.width - svBoundSize.width;
-//
-//                                    CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
-//
-//                                   // [sv setContentOffset:newOffset];
-//                                    [sv setContentOffset:newOffset animated:NO];
-//
-//
-//                                    lastY = toolbarViewFrame.origin.y;
-//
-//                                    lastKeyboardHeight = (int)keyboardHeight;
-//                                }
-//
-//                                else {
-//                                    if (lastKeyboardHeight == 0 || keyboardHeight < minKeyBoardHeight ){
-//
-//
-//
-//                                        [UIView setAnimationsEnabled:YES];
-//
-//                                        CGFloat y = keyboardFrameInView.origin.y;
-//                                        CGFloat tabBarY = toolbarViewFrame.origin.y;
-//
-//
-//
-//                                        if (keyboardHeight >= 0 && tabBarY <= SizeY && lastKeyboardHeight != 0) {
-//
-//                                            [sv setContentInset:UIEdgeInsetsMake(sv.contentInset.top, 0, shift + toolbarViewFrame.size.height - [value floatValue], 0)];
-//                                            sv.scrollIndicatorInsets = sv.contentInset;
-//
-//                                            toolbarViewFrame.origin.y = SizeY - shift;
-//                                            toolbarView.frame = toolbarViewFrame;
-//                                            initialContentOffset = sv.contentOffset;
-//
-//
-//                                            toolbarView  = [toolbarViewProxy view];
-//                                            toolbarViewFrame = toolbarView.frame;
-//
-//                                            CGFloat offsetY = (toolbarViewFrame.origin.y - y - [value floatValue]);
-//                                          //  CGPoint offset = CGPointMake(0, initialContentOffset.y);
-//                                            CGPoint offset = CGPointMake(0, initialContentOffset.y + offsetY+toolbarViewFrame.size.height);
-//
-//                                            sv.contentOffset = offset;
-//
-//                                            [self replaceValue:[NSNumber numberWithFloat:initialContentOffset.y + offsetY+toolbarViewFrame.size.height]
-//                                                        forKey:@"lastOffset"
-//                                                  notification:NO];
-//                                             NSLog ( @"y < tabBarY: %f", offsetY);
-//                                            lastShiftValue = shift;
-//                                            lastKeyboardHeight = (int)keyboardHeight;
-//                                        }
-//                                        else {
-//                                           // if (tabBarY == SizeY){
-//                                                NSLog ( @"ELSE");
-//
-//                                            [sv setContentInset:UIEdgeInsetsMake(sv.contentInset.top, 0, shift + toolbarViewFrame.size.height - [value floatValue], 0)];
-//                                            sv.scrollIndicatorInsets = sv.contentInset;
-//
-//                                            toolbarViewFrame.origin.y = SizeY - shift;
-//                                            toolbarView.frame = toolbarViewFrame;
-//                                            initialContentOffset = sv.contentOffset;
-//
-//
-//                                            toolbarView  = [toolbarViewProxy view];
-//                                            toolbarViewFrame = toolbarView.frame;
-//
-//
-//                                                CGSize svContentSize = sv.contentSize;
-//                                                CGSize svBoundSize = sv.bounds.size;
-//                                                CGFloat svBottomInsets = sv.contentInset.bottom;
-//                                                CGFloat bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + [value floatValue];
-//                                                CGFloat bottomWidth = svContentSize.width - svBoundSize.width;
-//
-//                                                CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
-//
-//                                               // [sv setContentOffset:newOffset];
-//                                                [sv setContentOffset:newOffset animated:NO];
-//
-//                                         //   }
-//
-//                                            lastShiftValue = shift;
-//                                            lastKeyboardHeight = (int)keyboardHeight;
-//
-//                                        }
-//
-//                                        lastY = toolbarViewFrame.origin.y;
-//                                        NSLog ( @"\n smooth ");
-//
-//
-//
-//                                    }
-//
-//                                }
-
-                                       
-
-                                
-                            }
-
-
-
-                     //       }
-                        
-
-                        
-                    }
-//                    else {
-//
-//
-//                        lastShiftValue = 0;
-//                    }
-                    
-                    
-                }
-           
+            }
+            
+            else if ((shift > [safeAreaValue intValue]) && (shift <= (shift - [safeAreaValue floatValue])) ){
+                //shift = [value floatValue];
+                //   NSLog ( @"#### FINAL shift - value: %i", (shift - [value floatValue]));
+                //NSLog ( @"++++ FINAL shift: %f", shift);
             }
             
             else {
-              //  NSLog ( @"UPDATE TooLBAR");
-
-              //  [self updateKeyboardPanningLockedView:proxy with:shift];
+                if (shift > 0.0){
+                    //                                    if (shift > [value intValue]){
+                    
+                }
+                else {
+                    shift = 0.0;
+                }
             }
             
-            counter ++;
+            
+            // lastShiftValue = shift;
+            
         }
-    }
-}
+        
+        else {
+            
+            if (shift > [safeAreaValue floatValue]){
+                
+               
+                shift = (shift + initialKeyboardTriggerOffset);
 
+                // shift = (shift - [value floatValue]);
+            }
+            else {
+                if (shift > 0.0){
+                    shift = (shift + initialKeyboardTriggerOffset);
+                }
+                else {
+                    shift = (initialKeyboardTriggerOffset + shift);
+                    //shift = 0.0;
+                    //keyboardwillHide = true;
+                }
+            }
+        }
+        
+        if (lastShiftValue != shift){
 
+            if ((shift >= 0) && (frameOriginY < height)){
+                
+                initialContentOffset = scrollView.contentOffset;
+                
+                if (keyboardHeight > minKeyBoardHeight){
+                    maxKeyBoardHeight = (int)keyboardHeight;
+                }
+                
+                if (keyboardHeight == minKeyBoardHeight && lastKeyboardHeight > 0 && lastKeyboardHeight == maxKeyBoardHeight && maxKeyBoardHeight > 0){
+                    [UIView setAnimationsEnabled:NO];
+                }
+                else if (keyboardHeight == maxKeyBoardHeight && lastKeyboardHeight > 0 && maxKeyBoardHeight > minKeyBoardHeight && lastKeyboardHeight == minKeyBoardHeight){
+                    [UIView setAnimationsEnabled:NO];
+                }
+                
+                float bottomInset = shift + toolbarViewFrame.size.height - [safeAreaValue floatValue];
+                
+                [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, bottomInset, 0)];
+                
+                UIEdgeInsets indicatorInsets = scrollView.verticalScrollIndicatorInsets;
+                
+                indicatorInsets.bottom = bottomInset;
+                
+                scrollView.verticalScrollIndicatorInsets = indicatorInsets;
+                
+                [self replaceValue:[NSNumber numberWithFloat:bottomInset]
+                            forKey:@"lastInsetBottom"
+                      notification:NO];
+                
+                if (manualKeyboardResize == false){
+                    
+                   
+                    CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0f, -(shift));
+                    Ti2DMatrix * matrix = [[Ti2DMatrix alloc] initWithMatrix:transform];
+                    
+                    if (keyboardVisible == false){
+                        [toolbarViewProxy replaceValue:[NSNumber numberWithInt:(7 << 16)] forKey:@"curve" notification:YES];
+                        [toolbarViewProxy replaceValue:[NSNumber numberWithFloat:250] forKey:@"duration" notification:YES];
+                        [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
+                        [toolbarView setTransform_:matrix];
 
+                        keyboardVisible = true;
+                    }
+                    else {
+                        if (keyboardwillHide == true){
+                            [toolbarViewProxy replaceValue:[NSNumber numberWithInt:(7 << 16)] forKey:@"curve" notification:YES];
 
+                            [toolbarViewProxy replaceValue:[NSNumber numberWithDouble:keyboardTransitionDuration] forKey:@"duration" notification:YES];
+                            [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
+                            [toolbarView setTransform_:matrix];
 
+                        }
+                        else {
+                                                       
+                            [toolbarViewProxy replaceValue:[NSNumber numberWithInt:(3 << 16)] forKey:@"curve" notification:YES];
+                             [toolbarViewProxy replaceValue:0 forKey:@"duration" notification:YES];
+                             [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
+                             [toolbarView setTransform_:matrix];
+                        }
+                    }
+                }
+                else {
+                    manualKeyboardResize = false;
+                    [UIView setAnimationsEnabled:YES];
+                }
+                
+                CGFloat tabBarY = toolbarViewFrame.origin.y;
+               
+                if (keyboardY < (tabBarY + toolbarViewFrame.size.height - [safeAreaValue floatValue])) {
+                    
+                    CGFloat offsetY = (tabBarY - keyboardY);
+                    
+                    CGPoint offset = CGPointMake(0, initialContentOffset.y + offsetY+toolbarViewFrame.size.height+keyboardTriggerOffset);
+                    
+                    [self replaceValue:[NSNumber numberWithFloat:initialContentOffset.y + offsetY+toolbarViewFrame.size.height+keyboardTriggerOffset]
+                                forKey:@"lastOffset"
+                          notification:NO];
+                    
+                    scrollView.contentOffset = offset;
+                    [UIView setAnimationsEnabled:YES];
+                    //NSLog ( @"contentOffset %f: ",offset.y);
+                }
+                else {
+                    if (lastKeyboardHeight != keyboardHeight){
+                        CGFloat offsetY = (tabBarY - keyboardY);
+                        
+                        CGPoint offset = CGPointMake(0, initialContentOffset.y + offsetY+toolbarViewFrame.size.height+keyboardTriggerOffset);
+                        
+                        [self replaceValue:[NSNumber numberWithFloat:initialContentOffset.y + offsetY+toolbarViewFrame.size.height+keyboardTriggerOffset]
+                                    forKey:@"lastOffset"
+                              notification:NO];
+                        
+                        scrollView.contentOffset = offset;
+                        [UIView setAnimationsEnabled:YES];
+                        //NSLog ( @"contentOffset %f: ",offset.y);
+                    }
+                    else {
+                        [UIView setAnimationsEnabled:YES];
+                    }
+                }
+                
+                lastShiftValue = shift;
+            }
+            else {
+                               
+                keyboardVisible = false;
+                initialContentOffset = scrollView.contentOffset;
+                
+                CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0f, -(initialBottomValue));
+                Ti2DMatrix * matrix = [[Ti2DMatrix alloc] initWithMatrix:transform];
+                [toolbarViewProxy replaceValue:[NSNumber numberWithInt:(7 << 16)] forKey:@"curve" notification:YES];
+                [toolbarViewProxy replaceValue:[NSNumber numberWithDouble:keyboardTransitionDuration] forKey:@"duration" notification:YES];
+                [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
+                [toolbarView setTransform_:matrix];
+                
+                float bottomInset = initialBottomValue + toolbarViewFrame.size.height - [safeAreaValue floatValue];
+               
+                [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, bottomInset, 0)];
+                
+                UIEdgeInsets indicatorInsets = scrollView.verticalScrollIndicatorInsets;
+                
+                indicatorInsets.bottom = bottomInset;
+                
+                scrollView.verticalScrollIndicatorInsets = indicatorInsets;
+                
+                [self replaceValue:[NSNumber numberWithFloat:bottomInset]
+                            forKey:@"lastInsetBottom"
+                      notification:NO];
+                CGFloat tabBarY = toolbarViewFrame.origin.y;
 
-- (void)updateKeyboardPanningLockedView:(TiViewProxy *)proxy with:(float)shift
-{
-    TiUIView * proxyView = [proxy view];
-
-    id value = [self valueForUndefinedKey:@"safeArea"];
-    if (value == nil || value == [NSNull null]){
-        value = 0;
-    }
-
-
-    
-    
-    //shift = (shift - [value floatValue]);
-    
-  //  NSLog ( @"safeArea: %f", [value floatValue]);
- //   NSLog ( @"Shift - safeArea: %f", (shift - [value floatValue]));
-
-   // NSLog ( @"- Shift: %f", -shift);
-
-    if (lastShiftValue < shift){
-        shift = (shift - [value floatValue]);
-        lastShiftValue = shift;
-    }
-    else{
-        //shift = (shift + [value floatValue]);
-        if (lastShiftValue > shift){
-            lastShiftValue = shift;
+                if (keyboardY < (tabBarY + toolbarViewFrame.size.height - [safeAreaValue floatValue])) {
+                    CGFloat offsetY = (tabBarY - keyboardY);
+                    CGPoint offset = CGPointMake(0, initialContentOffset.y + offsetY+toolbarViewFrame.size.height+keyboardTriggerOffset);
+                    
+                    [self replaceValue:[NSNumber numberWithFloat:initialContentOffset.y + offsetY+toolbarViewFrame.size.height+keyboardTriggerOffset]
+                                forKey:@"lastOffset"
+                          notification:NO];
+                    
+                    scrollView.contentOffset = offset;
+                    [UIView setAnimationsEnabled:YES];
+                }
+            }
         }
         else {
-            lastShiftValue = shift;
+            [UIView setAnimationsEnabled:YES];
         }
     }
-    
+    else {
+        
+       
+        initialContentOffset = scrollView.contentOffset;
 
+        float bottomInset = keyboardHeight + inputViewFrame.size.height - [safeAreaValue floatValue];
+       
+        [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, bottomInset, 0)];
+        
+        UIEdgeInsets indicatorInsets = scrollView.verticalScrollIndicatorInsets;
+        
+        indicatorInsets.bottom = bottomInset;
+        
+        scrollView.verticalScrollIndicatorInsets = indicatorInsets;
+        
+        [self replaceValue:[NSNumber numberWithFloat:bottomInset]
+                    forKey:@"lastInsetBottom"
+              notification:NO];
+        
+        
+        CGSize svContentSize = scrollView.contentSize;
+        CGSize svBoundSize = scrollView.bounds.size;
+        CGFloat svBottomInsets = scrollView.contentInset.bottom;
+        CGFloat bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + [safeAreaValue floatValue];
+        CGFloat bottomWidth = svContentSize.width - svBoundSize.width;
 
-    CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0f, -shift);
+        CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
 
-    Ti2DMatrix * matrix = [[Ti2DMatrix alloc] initWithMatrix:transform];
+        scrollView.contentOffset = newOffset;
 
-    [proxy replaceValue:matrix forKey:@"transform" notification:YES];
-    [proxyView setTransform_:matrix];
+        [self replaceValue:[NSNumber numberWithFloat:newOffset.y]
+                    forKey:@"lastOffset"
+              notification:NO];
+        
+        [UIView setAnimationsEnabled:YES];
+        manualKeyboardResize = false;
+    }
+    lastKeyboardHeight = (int)keyboardHeight;
 }
 
 
 - (void)setKeyboardTriggerOffset:(id)args
 {
-    float offset = [TiUtils floatValue:args def:0.0f];
-    self.view.keyboardTriggerOffset = offset;
+   float offset = [TiUtils floatValue:args def:0.0f];
+   keyboardTriggerOffset = offset;
+   manualKeyboardResize = true;
 }
 
+- (void)setKeyboardPanning:(id)args
+{
+    ENSURE_UI_THREAD(setKeyboardPanning, args);
+    
+    keyboardPanningOn = [TiUtils boolValue:args def:NO];
+    
+    [self replaceValue:[NSNumber numberWithBool:keyboardPanningOn]
+                forKey:@"keyboardPanning"
+          notification:NO];
+    if (keyboardPanningOn == NO){
+        [self teardownKeyboardPanning];
+    }
+    else {
+        [self initPanning];
+    }
+}
 
 
 @end

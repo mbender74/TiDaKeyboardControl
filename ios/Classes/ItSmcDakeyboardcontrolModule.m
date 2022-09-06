@@ -38,24 +38,5 @@
 
 #pragma Public APIs
 
-- (NSString *)example:(id)args
-{
-  // Example method. 
-  // Call with "MyModule.example(args)"
-  return @"hello world";
-}
-
-- (NSString *)exampleProp
-{
-  // Example property getter. 
-  // Call with "MyModule.exampleProp" or "MyModule.getExampleProp()"
-  return @"Titanium rocks!";
-}
-
-- (void)setExampleProp:(id)value
-{
-  // Example property setter. 
-  // Call with "MyModule.exampleProp = 'newValue'" or "MyModule.setExampleProp('newValue')"
-}
 
 @end

@@ -26,10 +26,10 @@
 		24DD6CFA1134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 24DD6CF81134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m */; };
 		24DE9E1111C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h in Headers */ = {isa = PBXBuildFile; fileRef = 24DE9E0F11C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h */; };
 		24DE9E1211C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m in Sources */ = {isa = PBXBuildFile; fileRef = 24DE9E1011C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m */; };
+		2C1848C928B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h in Headers */ = {isa = PBXBuildFile; fileRef = 2C1848C728B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h */; };
+		2C1848CA28B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2C1848C828B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m */; };
 		2C1D9A71262DB45600F192D6 /* TiViewProxy+KeyboardControl.h in Headers */ = {isa = PBXBuildFile; fileRef = 2C1D9A6F262DB45600F192D6 /* TiViewProxy+KeyboardControl.h */; };
 		2C1D9A72262DB45600F192D6 /* TiViewProxy+KeyboardControl.m in Sources */ = {isa = PBXBuildFile; fileRef = 2C1D9A70262DB45600F192D6 /* TiViewProxy+KeyboardControl.m */; };
-		2C1D9A76262DB47400F192D6 /* DAKeyboardControl.h in Headers */ = {isa = PBXBuildFile; fileRef = 2C1D9A75262DB47400F192D6 /* DAKeyboardControl.h */; };
-		2C1D9A7A262DB47800F192D6 /* DAKeyboardControl.m in Sources */ = {isa = PBXBuildFile; fileRef = 2C1D9A79262DB47800F192D6 /* DAKeyboardControl.m */; };
 		AA747D9F0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = AA747D9E0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch */; };
 		AACBBE4A0F95108600F1A2B1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AACBBE490F95108600F1A2B1 /* Foundation.framework */; };
 /* End PBXBuildFile section */
@@ -50,10 +50,10 @@
 		24DD6D1B1134B66800162E58 /* titanium.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = titanium.xcconfig; sourceTree = "<group>"; };
 		24DE9E0F11C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ItSmcDakeyboardcontrolModuleAssets.h; path = Classes/ItSmcDakeyboardcontrolModuleAssets.h; sourceTree = "<group>"; };
 		24DE9E1011C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = ItSmcDakeyboardcontrolModuleAssets.m; path = Classes/ItSmcDakeyboardcontrolModuleAssets.m; sourceTree = "<group>"; };
+		2C1848C728B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BABFrameObservingInputAccessoryView.h; path = Classes/BABFrameObservingInputAccessoryView.h; sourceTree = "<group>"; };
+		2C1848C828B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = BABFrameObservingInputAccessoryView.m; path = Classes/BABFrameObservingInputAccessoryView.m; sourceTree = "<group>"; };
 		2C1D9A6F262DB45600F192D6 /* TiViewProxy+KeyboardControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "TiViewProxy+KeyboardControl.h"; sourceTree = "<group>"; };
 		2C1D9A70262DB45600F192D6 /* TiViewProxy+KeyboardControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "TiViewProxy+KeyboardControl.m"; sourceTree = "<group>"; };
-		2C1D9A75262DB47400F192D6 /* DAKeyboardControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DAKeyboardControl.h; sourceTree = "<group>"; };
-		2C1D9A79262DB47800F192D6 /* DAKeyboardControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DAKeyboardControl.m; sourceTree = "<group>"; };
 		AA747D9E0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ItSmcDakeyboardcontrol_Prefix.pch; sourceTree = SOURCE_ROOT; };
 		AACBBE490F95108600F1A2B1 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		D2AAC07E0554694100DB518D /* libit.smc.dakeyboardcontrol.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libit.smc.dakeyboardcontrol.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -101,8 +101,8 @@
 		08FB77AEFE84172EC02AAC07 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
-				2C1D9A75262DB47400F192D6 /* DAKeyboardControl.h */,
-				2C1D9A79262DB47800F192D6 /* DAKeyboardControl.m */,
+				2C1848C728B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h */,
+				2C1848C828B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m */,
 				2C1D9A6F262DB45600F192D6 /* TiViewProxy+KeyboardControl.h */,
 				2C1D9A70262DB45600F192D6 /* TiViewProxy+KeyboardControl.m */,
 				24DE9E0F11C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h */,
@@ -131,9 +131,9 @@
 			files = (
 				AA747D9F0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch in Headers */,
 				24DD6CF91134B3F500162E58 /* ItSmcDakeyboardcontrolModule.h in Headers */,
-				2C1D9A76262DB47400F192D6 /* DAKeyboardControl.h in Headers */,
 				2C1D9A71262DB45600F192D6 /* TiViewProxy+KeyboardControl.h in Headers */,
 				24DE9E1111C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h in Headers */,
+				2C1848C928B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,8 +208,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2C1848CA28B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m in Sources */,
 				2C1D9A72262DB45600F192D6 /* TiViewProxy+KeyboardControl.m in Sources */,
-				2C1D9A7A262DB47800F192D6 /* DAKeyboardControl.m in Sources */,
 				24DD6CFA1134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m in Sources */,
 				24DE9E1211C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m in Sources */,
 			);
