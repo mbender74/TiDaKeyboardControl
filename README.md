@@ -5,3 +5,7 @@ Titanium module for interactive keyboard dismiss for iOS and Android (from API l
 
 for usage see in "example" -> demo project with usage for Android and iOS
 iOS (mostly rewritten) for working with iOS 16 again
+
+## iOS demo
+
+<img src="./keyboardcontrol-ios.gif" width="320" alt="Example iOS" />
