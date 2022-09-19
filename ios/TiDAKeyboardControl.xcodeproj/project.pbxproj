@@ -22,15 +22,15 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		24DD6CF91134B3F500162E58 /* ItSmcDakeyboardcontrolModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 24DD6CF71134B3F500162E58 /* ItSmcDakeyboardcontrolModule.h */; };
-		24DD6CFA1134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 24DD6CF81134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m */; };
-		24DE9E1111C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h in Headers */ = {isa = PBXBuildFile; fileRef = 24DE9E0F11C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h */; };
-		24DE9E1211C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m in Sources */ = {isa = PBXBuildFile; fileRef = 24DE9E1011C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m */; };
+		24DD6CF91134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.h in Headers */ = {isa = PBXBuildFile; fileRef = 24DD6CF71134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.h */; };
+		24DD6CFA1134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 24DD6CF81134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.m */; };
+		24DE9E1111C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.h in Headers */ = {isa = PBXBuildFile; fileRef = 24DE9E0F11C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.h */; };
+		24DE9E1211C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.m in Sources */ = {isa = PBXBuildFile; fileRef = 24DE9E1011C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.m */; };
 		2C1848C928B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h in Headers */ = {isa = PBXBuildFile; fileRef = 2C1848C728B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h */; };
 		2C1848CA28B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2C1848C828B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m */; };
-		2C1D9A71262DB45600F192D6 /* TiViewProxy+KeyboardControl.h in Headers */ = {isa = PBXBuildFile; fileRef = 2C1D9A6F262DB45600F192D6 /* TiViewProxy+KeyboardControl.h */; };
-		2C1D9A72262DB45600F192D6 /* TiViewProxy+KeyboardControl.m in Sources */ = {isa = PBXBuildFile; fileRef = 2C1D9A70262DB45600F192D6 /* TiViewProxy+KeyboardControl.m */; };
-		AA747D9F0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = AA747D9E0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch */; };
+		2CDE34B628D4E0C100F98E5A /* TiKeyboardControlViewProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 2CDE34B428D4E0C000F98E5A /* TiKeyboardControlViewProxy.m */; };
+		2CDE34B728D4E0C100F98E5A /* TiKeyboardControlViewProxy.h in Headers */ = {isa = PBXBuildFile; fileRef = 2CDE34B528D4E0C100F98E5A /* TiKeyboardControlViewProxy.h */; };
+		AA747D9F0F9514B9006C5449 /* DeMarcbenderKeyboardcontrol_Prefix.pch in Headers */ = {isa = PBXBuildFile; fileRef = AA747D9E0F9514B9006C5449 /* DeMarcbenderKeyboardcontrol_Prefix.pch */; };
 		AACBBE4A0F95108600F1A2B1 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AACBBE490F95108600F1A2B1 /* Foundation.framework */; };
 /* End PBXBuildFile section */
 
@@ -45,18 +45,18 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		24DD6CF71134B3F500162E58 /* ItSmcDakeyboardcontrolModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ItSmcDakeyboardcontrolModule.h; path = Classes/ItSmcDakeyboardcontrolModule.h; sourceTree = "<group>"; };
-		24DD6CF81134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = ItSmcDakeyboardcontrolModule.m; path = Classes/ItSmcDakeyboardcontrolModule.m; sourceTree = "<group>"; };
+		24DD6CF71134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DeMarcbenderKeyboardcontrolModule.h; path = Classes/DeMarcbenderKeyboardcontrolModule.h; sourceTree = "<group>"; };
+		24DD6CF81134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = DeMarcbenderKeyboardcontrolModule.m; path = Classes/DeMarcbenderKeyboardcontrolModule.m; sourceTree = "<group>"; };
 		24DD6D1B1134B66800162E58 /* titanium.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = titanium.xcconfig; sourceTree = "<group>"; };
-		24DE9E0F11C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ItSmcDakeyboardcontrolModuleAssets.h; path = Classes/ItSmcDakeyboardcontrolModuleAssets.h; sourceTree = "<group>"; };
-		24DE9E1011C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = ItSmcDakeyboardcontrolModuleAssets.m; path = Classes/ItSmcDakeyboardcontrolModuleAssets.m; sourceTree = "<group>"; };
+		24DE9E0F11C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = DeMarcbenderKeyboardcontrolModuleAssets.h; path = Classes/DeMarcbenderKeyboardcontrolModuleAssets.h; sourceTree = "<group>"; };
+		24DE9E1011C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = DeMarcbenderKeyboardcontrolModuleAssets.m; path = Classes/DeMarcbenderKeyboardcontrolModuleAssets.m; sourceTree = "<group>"; };
 		2C1848C728B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BABFrameObservingInputAccessoryView.h; path = Classes/BABFrameObservingInputAccessoryView.h; sourceTree = "<group>"; };
 		2C1848C828B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = BABFrameObservingInputAccessoryView.m; path = Classes/BABFrameObservingInputAccessoryView.m; sourceTree = "<group>"; };
-		2C1D9A6F262DB45600F192D6 /* TiViewProxy+KeyboardControl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "TiViewProxy+KeyboardControl.h"; sourceTree = "<group>"; };
-		2C1D9A70262DB45600F192D6 /* TiViewProxy+KeyboardControl.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "TiViewProxy+KeyboardControl.m"; sourceTree = "<group>"; };
-		AA747D9E0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ItSmcDakeyboardcontrol_Prefix.pch; sourceTree = SOURCE_ROOT; };
+		2CDE34B428D4E0C000F98E5A /* TiKeyboardControlViewProxy.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = TiKeyboardControlViewProxy.m; path = Classes/TiKeyboardControlViewProxy.m; sourceTree = "<group>"; };
+		2CDE34B528D4E0C100F98E5A /* TiKeyboardControlViewProxy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TiKeyboardControlViewProxy.h; path = Classes/TiKeyboardControlViewProxy.h; sourceTree = "<group>"; };
+		AA747D9E0F9514B9006C5449 /* DeMarcbenderKeyboardcontrol_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DeMarcbenderKeyboardcontrol_Prefix.pch; sourceTree = SOURCE_ROOT; };
 		AACBBE490F95108600F1A2B1 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		D2AAC07E0554694100DB518D /* libit.smc.dakeyboardcontrol.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libit.smc.dakeyboardcontrol.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2AAC07E0554694100DB518D /* libde.marcbender.keyboardcontrol.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libde.marcbender.keyboardcontrol.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,7 +74,7 @@
 		034768DFFF38A50411DB9C8B /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D2AAC07E0554694100DB518D /* libit.smc.dakeyboardcontrol.a */,
+				D2AAC07E0554694100DB518D /* libde.marcbender.keyboardcontrol.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -103,12 +103,12 @@
 			children = (
 				2C1848C728B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h */,
 				2C1848C828B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m */,
-				2C1D9A6F262DB45600F192D6 /* TiViewProxy+KeyboardControl.h */,
-				2C1D9A70262DB45600F192D6 /* TiViewProxy+KeyboardControl.m */,
-				24DE9E0F11C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h */,
-				24DE9E1011C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m */,
-				24DD6CF71134B3F500162E58 /* ItSmcDakeyboardcontrolModule.h */,
-				24DD6CF81134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m */,
+				24DE9E0F11C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.h */,
+				24DE9E1011C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.m */,
+				24DD6CF71134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.h */,
+				24DD6CF81134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.m */,
+				2CDE34B528D4E0C100F98E5A /* TiKeyboardControlViewProxy.h */,
+				2CDE34B428D4E0C000F98E5A /* TiKeyboardControlViewProxy.m */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -116,7 +116,7 @@
 		32C88DFF0371C24200C91783 /* Other Sources */ = {
 			isa = PBXGroup;
 			children = (
-				AA747D9E0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch */,
+				AA747D9E0F9514B9006C5449 /* DeMarcbenderKeyboardcontrol_Prefix.pch */,
 				24DD6D1B1134B66800162E58 /* titanium.xcconfig */,
 			);
 			name = "Other Sources";
@@ -129,10 +129,10 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AA747D9F0F9514B9006C5449 /* ItSmcDakeyboardcontrol_Prefix.pch in Headers */,
-				24DD6CF91134B3F500162E58 /* ItSmcDakeyboardcontrolModule.h in Headers */,
-				2C1D9A71262DB45600F192D6 /* TiViewProxy+KeyboardControl.h in Headers */,
-				24DE9E1111C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.h in Headers */,
+				AA747D9F0F9514B9006C5449 /* DeMarcbenderKeyboardcontrol_Prefix.pch in Headers */,
+				24DD6CF91134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.h in Headers */,
+				2CDE34B728D4E0C100F98E5A /* TiKeyboardControlViewProxy.h in Headers */,
+				24DE9E1111C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.h in Headers */,
 				2C1848C928B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -154,7 +154,7 @@
 			);
 			name = TiDAKeyboardControl;
 			productName = TiDAKeyboardControl;
-			productReference = D2AAC07E0554694100DB518D /* libit.smc.dakeyboardcontrol.a */;
+			productReference = D2AAC07E0554694100DB518D /* libde.marcbender.keyboardcontrol.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
@@ -209,9 +209,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				2C1848CA28B18A7B009E6BC4 /* BABFrameObservingInputAccessoryView.m in Sources */,
-				2C1D9A72262DB45600F192D6 /* TiViewProxy+KeyboardControl.m in Sources */,
-				24DD6CFA1134B3F500162E58 /* ItSmcDakeyboardcontrolModule.m in Sources */,
-				24DE9E1211C5FE74003F90F6 /* ItSmcDakeyboardcontrolModuleAssets.m in Sources */,
+				24DD6CFA1134B3F500162E58 /* DeMarcbenderKeyboardcontrolModule.m in Sources */,
+				24DE9E1211C5FE74003F90F6 /* DeMarcbenderKeyboardcontrolModuleAssets.m in Sources */,
+				2CDE34B628D4E0C100F98E5A /* TiKeyboardControlViewProxy.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,11 +232,11 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				DSTROOT = /tmp/ItSmcDakeyboardcontrol.dst;
+				DSTROOT = /tmp/DeMarcbenderKeyboardcontrol.dst;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = ItSmcDakeyboardcontrol_Prefix.pch;
+				GCC_PREFIX_HEADER = DeMarcbenderKeyboardcontrol_Prefix.pch;
 				GCC_PREPROCESSOR_DEFINITIONS = "TI_VERSION=$(TI_VERSION)";
 				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
 				GCC_VERSION = "";
@@ -249,14 +249,14 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INSTALL_PATH = /usr/local/lib;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = (
 					"-DDEBUG",
 					"-DTI_POST_1_2",
 				);
 				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_NAME = it.smc.dakeyboardcontrol;
+				PRODUCT_NAME = de.marcbender.keyboardcontrol;
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				RUN_CLANG_STATIC_ANALYZER = NO;
@@ -273,11 +273,11 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				DEPLOYMENT_POSTPROCESSING = YES;
-				DSTROOT = /tmp/ItSmcDakeyboardcontrol.dst;
+				DSTROOT = /tmp/DeMarcbenderKeyboardcontrol.dst;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_MODEL_TUNING = G5;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = ItSmcDakeyboardcontrol_Prefix.pch;
+				GCC_PREFIX_HEADER = DeMarcbenderKeyboardcontrol_Prefix.pch;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"TI_VERSION=$(TI_VERSION)",
 					NDEBUG,
@@ -293,11 +293,11 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INSTALL_PATH = /usr/local/lib;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LIBRARY_SEARCH_PATHS = "";
 				OTHER_CFLAGS = "-DTI_POST_1_2";
 				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_NAME = it.smc.dakeyboardcontrol;
+				PRODUCT_NAME = de.marcbender.keyboardcontrol;
 				RUN_CLANG_STATIC_ANALYZER = NO;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2,6";
@@ -342,14 +342,14 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
-				DSTROOT = /tmp/ItSmcDakeyboardcontrol.dst;
+				DSTROOT = /tmp/DeMarcbenderKeyboardcontrol.dst;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = ItSmcDakeyboardcontrol_Prefix.pch;
+				GCC_PREFIX_HEADER = DeMarcbenderKeyboardcontrol_Prefix.pch;
 				GCC_PREPROCESSOR_DEFINITIONS = "TI_VERSION=$(TI_VERSION)";
 				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
 				GCC_VERSION = "";
@@ -365,14 +365,14 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INSTALL_PATH = /usr/local/lib;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
 					"-DDEBUG",
 					"-DTI_POST_1_2",
 				);
 				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_NAME = it.smc.dakeyboardcontrol;
+				PRODUCT_NAME = de.marcbender.keyboardcontrol;
 				PROVISIONING_PROFILE = "";
 				"PROVISIONING_PROFILE[sdk=iphoneos*]" = "";
 				RUN_CLANG_STATIC_ANALYZER = NO;
@@ -417,13 +417,13 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				DSTROOT = /tmp/ItSmcDakeyboardcontrol.dst;
+				DSTROOT = /tmp/DeMarcbenderKeyboardcontrol.dst;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_MODEL_TUNING = G5;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = ItSmcDakeyboardcontrol_Prefix.pch;
+				GCC_PREFIX_HEADER = DeMarcbenderKeyboardcontrol_Prefix.pch;
 				GCC_PREPROCESSOR_DEFINITIONS = "TI_VERSION=$(TI_VERSION)";
 				GCC_TREAT_WARNINGS_AS_ERRORS = NO;
 				GCC_VERSION = "";
@@ -439,10 +439,10 @@
 				GCC_WARN_UNUSED_VALUE = NO;
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				INSTALL_PATH = /usr/local/lib;
-				IPHONEOS_DEPLOYMENT_TARGET = 12.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				OTHER_CFLAGS = "-DTI_POST_1_2";
 				OTHER_LDFLAGS = "-ObjC";
-				PRODUCT_NAME = it.smc.dakeyboardcontrol;
+				PRODUCT_NAME = de.marcbender.keyboardcontrol;
 				RUN_CLANG_STATIC_ANALYZER = NO;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2,6";

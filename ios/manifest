@@ -9,10 +9,10 @@ description: TiDAKeyboardControl
 author: Your Name
 license: Specify your license
 copyright: Copyright (c) 2021 by Your Company
-mac:false
+mac:true
 # these should not be edited
 name: TiDAKeyboardControl
-moduleid: it.smc.dakeyboardcontrol
+moduleid: de.marcbender.keyboardcontrol
 guid: b828232e-dbf7-4615-9924-39f539a94727
 platform: iphone
 minsdk: 10.1.0.GA

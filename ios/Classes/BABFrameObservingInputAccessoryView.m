@@ -80,23 +80,36 @@ static void *BABFrameObservingContext = &BABFrameObservingContext;
     }
 }
 
-/*
+
 - (void)layoutSubviews {
     
     [super layoutSubviews];
-    
+  //  NSLog ( @" ####################  assescorryview layoutSubviews");
+
+    //CGRect frame = self.superview.frame;
+   // self.inputAcessoryViewFrameChangedBlock(frame);
+}
+
+
+
+- (void)doConfig {       
     CGRect frame = self.superview.frame;
     self.inputAcessoryViewFrameChangedBlock(frame);
 }
-*/
+
+
 
 - (void)setFrame:(CGRect)frame {    
-    //NSLog ( @" ####################  setFrame: %f", frame.size.height );
+//    NSLog ( @" ####################  assescorryview setFrame: %f", ceil(frame.size.height) );
     [super setFrame:frame];
 
     for (NSLayoutConstraint *constraint in self.constraints) {
         if (constraint.firstAttribute == NSLayoutAttributeHeight) {
-            constraint.constant = frame.size.height;
+            constraint.constant = ceil(frame.size.height);
+            
+           // NSLog ( @" ####################  assescorryview constraint.constant ");
+
+            
             break;
         }
     }

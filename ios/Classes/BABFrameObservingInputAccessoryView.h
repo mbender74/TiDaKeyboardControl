@@ -12,4 +12,6 @@
 @property (nonatomic, copy) void (^inputAcessoryViewFrameChangedBlock)(CGRect frame);
 @property (nonatomic, readonly) CGRect inputAcesssorySuperviewFrame;
 
+- (void)doConfig;
+
 @end
