@@ -19,6 +19,10 @@
 #define USE_TI_UILISTVIEW
 #define USE_TI_UITAB
 
+#if TARGET_OS_MACCATALYST
+#import <AppKit/AppKit.h>
+#endif
+
 #import "TiKeyboardControlViewProxy.h"
 #import "DeMarcbenderKeyboardcontrolModule.h"
 #import "TiUITabGroupProxy.h"
@@ -28,7 +32,6 @@
 #import "TiBase.h"
 #import "TiHost.h"
 #import "TiComplexValue.h"
-#import "Ti2DMatrix.h"
 #import "TiUIView.h"
 #import "TiAnimation.h"
 #import "TiUIScrollView.h"
@@ -48,6 +51,43 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 }
 
 
+@implementation TiKeyboardControlScrollDelegateProxy
+
+- (void)scrollViewDidScroll:(UIScrollView *)scrollView {
+    if ([self.originalDelegate respondsToSelector:@selector(scrollViewDidScroll:)]) {
+        [self.originalDelegate scrollViewDidScroll:scrollView];
+    }
+    [self.keyboardControlProxy handleScrollViewDidScroll:scrollView];
+}
+
+- (void)scrollViewWillBeginDragging:(UIScrollView *)scrollView {
+    if ([self.originalDelegate respondsToSelector:@selector(scrollViewWillBeginDragging:)]) {
+        [self.originalDelegate scrollViewWillBeginDragging:scrollView];
+    }
+    [self.keyboardControlProxy handleScrollViewWillBeginDragging:scrollView];
+}
+
+- (void)scrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate {
+    if ([self.originalDelegate respondsToSelector:@selector(scrollViewDidEndDragging:willDecelerate:)]) {
+        [self.originalDelegate scrollViewDidEndDragging:scrollView willDecelerate:decelerate];
+    }
+    [self.keyboardControlProxy handleScrollViewDidEndDragging:scrollView willDecelerate:decelerate];
+}
+
+- (BOOL)respondsToSelector:(SEL)aSelector {
+    return [super respondsToSelector:aSelector] || [self.originalDelegate respondsToSelector:aSelector];
+}
+
+- (id)forwardingTargetForSelector:(SEL)aSelector {
+    if ([self.originalDelegate respondsToSelector:aSelector]) {
+        return self.originalDelegate;
+    }
+    return [super forwardingTargetForSelector:aSelector];
+}
+
+@end
+
+
 @implementation TiKeyboardControlViewProxy
 
 
@@ -62,8 +102,14 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         autoScrollToBottomDone = false;
         extendSafeArea = false;
         ignoreExtendSafeArea = false;
+        showKeyboardOnScrollUp = false;
+        showKeyboardOnScrollUpTriggered = false;
+        isDraggingScroll = false;
+        scrollDelegateProxy = nil;
         self.manualPanning = false;
         stop = false;
+        animationCurve = 7; // Default: UIViewAnimationCurveEaseInOut
+        isSwiping = NO;
         toolbarInputViewDiff = 0;
         isNavigationWindowBottomDiff = 0;
         altAddPixel = 0;
@@ -174,15 +220,25 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     for (UIView *subview in subviews) {
         if ([subview isKindOfClass:[UITextView class]]){
-            return (UITextView*)subview;
+            UITextView *tv = (UITextView*)subview;
+            NSLog(@"[TiDAKBC] findTextView | FOUND UITextView: frame={{%f,%f},{%f,%f}}, text=%@, inputAccessory=%@",
+                  tv.frame.origin.x, tv.frame.origin.y, tv.frame.size.width, tv.frame.size.height,
+                  tv.text, tv.inputAccessoryView);
+            return tv;
         }
         else if ([subview isKindOfClass:[UITextField class]]){
-            return (UITextField*)subview;
+            UITextField *tf = (UITextField*)subview;
+            NSLog(@"[TiDAKBC] findTextView | FOUND UITextField: frame={{%f,%f},{%f,%f}}, text=%@, inputAccessory=%@",
+                  tf.frame.origin.x, tf.frame.origin.y, tf.frame.size.width, tf.frame.size.height,
+                  tf.text, tf.inputAccessoryView);
+            return tf;
         }
         else {
             [self listSubviewsOfView:subview];
         }
     }
+    NSLog(@"[TiDAKBC] findTextView | NO text field found in subviews of %@", view);
+    return nil;
 }
 
 
@@ -205,9 +261,15 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     if (toolbarViewProxy != nil) {
         UIView * proxyView = [toolbarViewProxy view];
-        return [self listSubviewsOfView:proxyView];
-    }
-    else {
+        NSLog(@"[TiDAKBC] findTextView | searching in textfield proxy: view=%@, viewClass=%s",
+              proxyView, NSStringFromClass([proxyView class]).UTF8String);
+        id result = [self listSubviewsOfView:proxyView];
+        if (result) {
+            NSLog(@"[TiDAKBC] findTextView | search complete — textfield resolved to %@", NSStringFromClass([result class]));
+        }
+        return result;
+    } else {
+        NSLog(@"[TiDAKBC] findTextView | _textfield is nil, skipping");
         return nil;
     }
 }
@@ -232,6 +294,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     isUItableView = false;
     keyboardVisible = false;
     keyboardwillHide = false;
+    keyboardInsetSettled = NO;
     initalToolbarViewFrame = CGRectZero;
     windowRect = self.view.window.frame;
     windowHeight = windowRect.size.height;
@@ -469,6 +532,15 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         [self setupNotifications:(sv)];
     }
 
+    // Store initial content insets before any keyboard animation modifies them
+    initialContentInset = nativeScrollView.contentInset;
+    NSLog(@"[TiDAKBC] setupKeyboardPanning | initialContentInset={%.0f, %.0f, %.0f, %.0f}",
+          initialContentInset.top, initialContentInset.left, initialContentInset.bottom, initialContentInset.right);
+
+    // Install scroll delegate proxy for showKeyboardOnScrollUp if property is already set
+    if (showKeyboardOnScrollUp) {
+        [self installScrollDelegateProxy];
+    }
 
     [toolbarview addObserver:self forKeyPath:@"bounds" options:0 context:NULL];
 
@@ -493,6 +565,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 - (void)setupNotifications:(id)object {
 
     UIScrollView *contentScrollView = (UIScrollView *)object;
+    NSLog(@"[TiDAKBC] setupNotifications | START — scrollView=%@, class=%s, _textfield=%p, _toolbarView=%p",
+          contentScrollView, NSStringFromClass([contentScrollView class]).UTF8String, _textfield, _toolbarView);
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidHide:) name:UIKeyboardDidHideNotification object:nil];
 
@@ -508,7 +582,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     inputViewFrame = inputView.frame;
     lastInputViewFrameHeight = inputViewFrame.size.height;
-    inputView.userInteractionEnabled = NO;
+   inputView.userInteractionEnabled = NO;
 
     id enterview = [self findTextView];
 
@@ -520,27 +594,246 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         textview = (UITextView *)enterview;
         textview.inputAccessoryView = inputView;
     }
+
+    // Store the initial accessory view frame.y for delta calculation during keyboard show/hide
+    // At this point, keyboard is hidden — accessory view sits at bottom of screen
+    CGRect ivf = inputView.frame;
+    if (CGRectIsNull(ivf) || CGRectIsEmpty(ivf)) {
+        ivf = toolbarview.superview.frame;
+    }
+    initialAccessoryViewFrameYWhenHidden = ivf.origin.y;
+    NSLog(@"[TiDAKBC] setupNotifications | initialAccFrameY=%f, tvSupervH=%f",
+          initialAccessoryViewFrameYWhenHidden, toolbarview.superview.frame.size.height);
     __weak TiKeyboardControlViewProxy *weakSelf = self;
 
     inputView.inputAcessoryViewFrameChangedBlock = ^(CGRect inputAccessoryViewFrame){
 
-        
-       // CGFloat value = CGRectGetHeight(weakSelf.view.frame) - CGRectGetMinY(inputAccessoryViewFrame) - CGRectGetHeight(weakSelf.textField.inputAccessoryView.frame);
-        
-        
-        
+        __strong TiKeyboardControlViewProxy *strongSelf = weakSelf;
+        if (!strongSelf) return;
 
-        CGFloat value = (CGRectGetHeight(weakSelf.view.frame) - CGRectGetMinY(inputAccessoryViewFrame));
+        strongSelf->lastInputAccessoryViewFrame = inputAccessoryViewFrame;
 
-        
-       // weakSelf.toolbarContainerVerticalSpacingConstraint.constant = MAX(0, value);
-        
-       // [weakSelf.view layoutIfNeeded];
+        CGRect tvf = toolbarview.frame;
+        NSLog(@"[TiDAKBC] KVO | frame.y=%f, h=%f | vis=%d, hide=%d, settled=%d, initAccIsNull=%d, mResize=%d",
+              inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.size.height,
+              strongSelf->keyboardVisible, strongSelf->keyboardwillHide, strongSelf->hasSettledShift,
+              CGRectIsNull(strongSelf->initialAccessoryViewFrame), strongSelf->manualKeyboardResize);
 
-        
-            self->lastInputAccessoryViewFrame = inputAccessoryViewFrame;
+       // Skip inset updates during keyboard animation — applyScrollViewInset was already
+        // called with the correct value in keyboardWillShow. Updating from KVO during
+        // animation causes bottomInset to drift downward (345 -> 182) as accessory frame.y
+        // changes, hiding content behind the keyboard. Only update after settled baseline.
+        if (strongSelf->keyboardVisible && strongSelf->hasSettledShift &&
+            (CGRectIsNull(strongSelf->initialAccessoryViewFrame) || CGRectIsEmpty(strongSelf->initialAccessoryViewFrame))) {
+            // Don't set keyboardInsetSettled=YES yet — iOS may still be animating the
+            // accessory view position. If frame.y changes, this path won't run again
+            // (initialAccessoryViewFrame is now set), so swipe deltas would be wrong.
+            // Instead, wait until a KVO callback shows no change from previous -> that's true settle.
+            strongSelf->initialAccessoryViewFrame = inputAccessoryViewFrame;
+            strongSelf->lastAccessoryViewHeight = inputAccessoryViewFrame.size.height;
+            strongSelf->cachedSwipeTransform = CGAffineTransformIdentity;
 
-            [weakSelf updateKeyboardPanningViews:inputAccessoryViewFrame withScrollView:contentScrollView withBottomValue:value];
+            CGFloat value = CGRectGetHeight(strongSelf->view.frame) - CGRectGetMinY(inputAccessoryViewFrame);
+            CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+            // Use current frame translation (not stale lastShiftValue from keyboardDidShow)
+            // so toolbar resizes between keyboardDidShow and first KVO don't get clobbered.
+            strongSelf->settledShift = trans;
+            NSLog(@"[TiDAKBC] KVO SETTLE BASELINE | FIRST post-keyboardShow — accFrame={{%f,%f},{%f,%f}}, settledShift=%f, viewH=%f, value=%f",
+                  inputAccessoryViewFrame.origin.x, inputAccessoryViewFrame.origin.y,
+                  inputAccessoryViewFrame.size.width, inputAccessoryViewFrame.size.height,
+                  strongSelf->settledShift, strongSelf->view.frame.size.height, value);
+            NSLog(@"[TiDAKBC] KVO SETTLE BASELINE | translation=%f, keyboardTransitionDuration=%f, curve=%ld",
+                  trans, strongSelf->keyboardTransitionDuration, (long)strongSelf->animationCurve);
+
+            // When keyboard is already visible (keyboard switch / toolbar resize),
+            // keyboardWillShow fires with duration=0 for instant transition. But this
+            // KVO callback runs first with the stale duration from the previous show.
+            // Use duration=0 when keyboardVisible to avoid unwanted animation.
+            NSTimeInterval settleDuration = strongSelf->keyboardVisible ? 0 : strongSelf->keyboardTransitionDuration;
+            [strongSelf applyToolbarTranslation:trans
+                                    animated:(settleDuration > 0) duration:settleDuration
+                                       curve:strongSelf->animationCurve];
+            // Apply inset once here — this is the only chance before animation drift starts
+            [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+            [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
+
+            NSLog(@"[TiDAKBC] KVO SETTLE BASELINE | DONE — contentInset.bottom=%.0f", strongSelf->nativeScrollView.contentInset.bottom);
+
+            if (!strongSelf->autoScrollToBottomDoneAfterShow && strongSelf->autoScrollToBottom) {
+                strongSelf->autoScrollToBottomDoneAfterShow = YES;
+                if (strongSelf->keyboardVisible) {
+                    // Toolbar resize while keyboard is already visible — keyboardWillShow
+                    // skips autoScrollToBottom (!keyboardVisible guard), so handle it here.
+                    NSLog(@"[TiDAKBC] KVO SETTLE BASELINE | autoScrollToBottom (toolbar resize, keyboard already visible)");
+                    [strongSelf scrollToBottomIfNeeded];
+                } else {
+                    NSLog(@"[TiDAKBC] KVO SETTLE BASELINE | autoScrollToBottom handled in keyboardWillShow");
+                }
+            }
+
+            // Don't return — let next KVO callback verify this is truly settled.
+            // Fall through to swipe path for further processing.
+        }
+
+       // Keyboard hide: CALayer tracks position — MUST be FIRST when hasSettledShift=YES
+        if (strongSelf->keyboardwillHide) {
+            CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+            NSLog(@"[TiDAKBC] KVO HIDE | tv={{%f,%f},{%f,%f}}, translation=%f, inset before=%.0f",
+                  tvf.origin.x, tvf.origin.y, tvf.size.width, tvf.size.height,
+                  trans, strongSelf->nativeScrollView.contentInset.bottom);
+
+            [strongSelf applyToolbarTranslation:trans
+                                    animated:YES duration:strongSelf->keyboardTransitionDuration
+                                       curve:strongSelf->animationCurve];
+            [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+            [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
+            return;
+        }
+
+       // Active swipe, true-settle detection, or keyboard hide: direct CALayer for 120Hz smoothness
+        if (strongSelf->keyboardVisible && strongSelf->hasSettledShift) {
+
+            // True-settle detection: if keyboardInsetSettled is still NO (iOS still animating),
+            // check if frame.y matches baseline. If so, iOS has finished → activate inset updates.
+            if (!strongSelf->keyboardInsetSettled && !CGRectIsNull(strongSelf->initialAccessoryViewFrame)) {
+                CGFloat settleDeltaY = inputAccessoryViewFrame.origin.y - strongSelf->initialAccessoryViewFrame.origin.y;
+                NSLog(@"[TiDAKBC] KVO TRUE-SETTLE CHECK | deltaY=%.2f (accY=%f - initAccY=%f)",
+                      settleDeltaY, inputAccessoryViewFrame.origin.y, strongSelf->initialAccessoryViewFrame.origin.y);
+
+                if (fabs(settleDeltaY) < 0.5) {
+                    NSLog(@"[TiDAKBC] KVO TRUE-SETTLED | frame stable — activating inset updates");
+                    strongSelf->keyboardInsetSettled = YES;
+                    CGFloat settleTrans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+                    strongSelf->settledShift = settleTrans;
+                    NSLog(@"[TiDAKBC] KVO TRUE-SETTLED | settledShift=%f (from actual translation)", settleTrans);
+
+                    // Re-apply insets with confirmed settled position
+                    [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+                    [strongSelf applyAutoSizeBottomConstraintWithTranslation:settleTrans];
+                    NSLog(@"[TiDAKBC] KVO TRUE-SETTLED | inset=%.0f, settledShift=%f",
+                          strongSelf->nativeScrollView.contentInset.bottom, strongSelf->settledShift);
+                } else {
+                    NSLog(@"[TiDAKBC] KVO NOT YET SETTLED | deltaY=%.2d (still animating)", settleDeltaY);
+                }
+            }
+
+            CGFloat deltaY = inputAccessoryViewFrame.origin.y - strongSelf->initialAccessoryViewFrame.origin.y;
+
+            NSLog(@"[TiDAKBC] KVO SWIPE | deltaY=%f (accY=%f - initAccY=%f), cachedSwipeTransform=(%g,%g), manualResize=%d",
+                  deltaY, inputAccessoryViewFrame.origin.y, strongSelf->initialAccessoryViewFrame.origin.y,
+                  strongSelf->cachedSwipeTransform.ty, strongSelf->manualKeyboardResize);
+
+                  // Toolbar resize: iOS moved accessory view due to toolbar height change.
+            // Reset all swipe state so future KVO deltas are computed from the new baseline.
+            if (strongSelf->manualKeyboardResize && fabs(deltaY) >= 0.5) {
+                NSLog(@"[TiDAKBC] KVO TOOLBAR RESIZE DETECTED | deltaY=%f, oldBaseline={{%f,%f},{%f,%f}}, newFrame={{%f,%f},{%f,%f}}",
+                      deltaY,
+                      strongSelf->initialAccessoryViewFrame.origin.x, strongSelf->initialAccessoryViewFrame.origin.y,
+                      strongSelf->initialAccessoryViewFrame.size.width, strongSelf->initialAccessoryViewFrame.size.height,
+                      inputAccessoryViewFrame.origin.x, inputAccessoryViewFrame.origin.y,
+                      inputAccessoryViewFrame.size.width, inputAccessoryViewFrame.size.height);
+
+                // Update swipe baseline to the NEW position (where iOS actually moved the accessory view)
+                strongSelf->initialAccessoryViewFrame = inputAccessoryViewFrame;
+
+                CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+                strongSelf->settledShift = trans; // sync with actual toolbar translation
+                NSLog(@"[TiDAKBC] KVO TOOLBAR RESIZE | newBaseline.y=%f, translation=%f, settledShift=%f",
+                      inputAccessoryViewFrame.origin.y, trans, strongSelf->settledShift);
+
+                // Apply translation directly to CALayer (TiUIView doesn't handle UIView.transform correctly).
+                [CATransaction begin];
+                [CATransaction setDisableActions:YES];
+                strongSelf->toolbarview.layer.affineTransform = CGAffineTransformMakeTranslation(0, -trans);
+                strongSelf->cachedSwipeTransform = CGAffineTransformIdentity;
+                [CATransaction commit];
+
+                // NO keyboardInsetSettled=YES here — wait for true-settle or normal settled path to set it
+                NSLog(@"[TiDAKBC] KVO TOOLBAR RESIZE | SKIPPED inset (waiting for true-settle), bottom=%.0f", strongSelf->nativeScrollView.contentInset.bottom);
+                [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
+
+                // Auto-scroll to bottom on toolbar resize
+                if (strongSelf->autoScrollToBottom) {
+                    [strongSelf scrollToBottomIfNeeded];
+                }
+
+            // Normal swipe during settled keyboard — CALayer for 120Hz smoothness
+            } else if (!strongSelf->manualKeyboardResize && fabs(deltaY) >= 0.5) {
+                CGFloat newTy = -(strongSelf->settledShift) + deltaY;
+                if (newTy > 0) newTy = 0;
+                CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, newTy);
+
+                NSLog(@"[TiDAKBC] KVO SWIPE STEP | settledShift=%f, deltaY=%f -> newTy=%f",
+                      strongSelf->settledShift, deltaY, newTy);
+
+                if (!CGAffineTransformEqualToTransform(newTransform, strongSelf->cachedSwipeTransform)) {
+                    CGFloat oldTy = strongSelf->cachedSwipeTransform.ty;
+                    NSLog(@"[TiDAKBC] KVO SWIPE APPLY | CALayer transform: ty %f -> %f (NO inset change during swipe)", oldTy, newTy);
+                    strongSelf->cachedSwipeTransform = newTransform;
+                    [CATransaction begin];
+                    [CATransaction setDisableActions:YES];
+                    strongSelf->toolbarview.layer.affineTransform = newTransform;
+                    [CATransaction commit];
+
+                    // Update autoSize bottom constraint to follow swipe (without animation)
+                    [UIView performWithoutAnimation:^{
+                        [strongSelf applyAutoSizeBottomConstraintWithTranslation:strongSelf->settledShift - deltaY];
+                    }];
+                } else {
+                    NSLog(@"[TiDAKBC] KVO SWIPE STEP | SKIP transform unchanged (ty=%f)", newTy);
+                }
+            } else if (fabs(deltaY) < 0.5 && !CGAffineTransformEqualToTransform(strongSelf->cachedSwipeTransform, CGAffineTransformIdentity)) {
+                // Spring settled: keep CALayer as rendering surface (TiUIView doesn't handle
+                // UIView.transform correctly). Apply translation directly to CALayer,
+                // update baseline, reset cached swipe state.
+                NSLog(@"[TiDAKBC] KVO SWIPE SPRING SETTLED | deltaY=%f -> keeping CALayer as rendering surface", deltaY);
+
+                CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+                strongSelf->settledShift = trans;
+                strongSelf->initialAccessoryViewFrame = inputAccessoryViewFrame;
+                NSLog(@"[TiDAKBC] KVO SWIPE SPRING SETTLED | translation=%f, settledShift=%f, newBaseline.y=%f", trans, trans, inputAccessoryViewFrame.origin.y);
+
+                [CATransaction begin];
+                [CATransaction setDisableActions:YES];
+                strongSelf->toolbarview.layer.affineTransform = CGAffineTransformMakeTranslation(0, -trans);
+                strongSelf->cachedSwipeTransform = CGAffineTransformIdentity;
+                [CATransaction commit];
+                [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
+                strongSelf->springSettledJustHappened = YES;
+            } else if (fabs(deltaY) < 0.5 && CGAffineTransformEqualToTransform(strongSelf->cachedSwipeTransform, CGAffineTransformIdentity)) {
+                // Settled state with CALayer already identity — UIView handles toolbar, NO inset change
+                NSLog(@"[TiDAKBC] KVO SWIPE SETTLED-IDENTITY | deltaY=%f (no inset during swipe)", deltaY);
+            }
+
+  // Normal settled state (no swipe): UIView animation with keyboard
+        } else if (strongSelf->keyboardVisible) {
+            CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+            NSLog(@"[TiDAKBC] KVO SETTLED | tv={{%f,%f},{%f,%f}}, translation=%f, insetSettled=%d, lastShift=%f",
+                  tvf.origin.x, tvf.origin.y, tvf.size.width, tvf.size.height,
+                  trans, strongSelf->keyboardInsetSettled, strongSelf->lastShiftValue);
+
+            [strongSelf applyToolbarTranslation:trans
+                                    animated:YES duration:strongSelf->keyboardTransitionDuration
+                                       curve:strongSelf->animationCurve];
+            // Skip inset updates until first KVO callback has settled (prevents animation drift)
+            if (strongSelf->keyboardInsetSettled) {
+                NSLog(@"[TiDAKBC] KVO SETTLED | applying inset, bottom before=%.0f", strongSelf->nativeScrollView.contentInset.bottom);
+                [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+                [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
+
+                } else {
+                NSLog(@"[TiDAKBC] KVO SETTLED | SKIPPED inset (insetSettled=%d — waiting for first callback post-show)", strongSelf->keyboardInsetSettled);
+            }
+
+        // First show (before keyboardVisible set): skip positioning — toolbar stays at default
+        } else if (!strongSelf->keyboardVisible) {
+            NSLog(@"[TiDAKBC] KVO SKIP | !keyboardVisible, frame.y=%f", inputAccessoryViewFrame.origin.y);
+            return;
+
+        // Fallback (shouldn't happen): skip
+        } else {
+            NSLog(@"[TiDAKBC] KVO FALLBACK | frame.y=%f, vis=%d", inputAccessoryViewFrame.origin.y, strongSelf->keyboardVisible);
+        }
 
     };
 
@@ -549,6 +842,12 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     if ((isNavigationWindow == false && isTabGroup == false) && autoScrollToBottomDone == false && (autoScrollToBottom == true || autoScrollToBottom == false)){
 
         autoScrollToBottomDone = true;
+        NSLog(@"[TiDAKBC] INIT autoScrollToBottom | isNav=%d, isTab=%d, autoScrollToBottom=%d, autoScrollToBottomDone=%d",
+              isNavigationWindow, isTabGroup, autoScrollToBottom, autoScrollToBottomDone);
+        NSLog(@"[TiDAKBC] INIT autoScrollToBottom | scrollView=%p, contentSize={%f,%f}, boundsSize={%f,%f}, contentOffset.y=%f, contentInset.bottom=%f",
+              contentScrollView, contentScrollView.contentSize.width, contentScrollView.contentSize.height,
+              contentScrollView.frame.size.width, contentScrollView.frame.size.height,
+              contentScrollView.contentOffset.y, contentScrollView.contentInset.bottom);
 
         CGFloat toolbarDiff = (toolbarResizeDiff + bottomPadding);
 
@@ -563,12 +862,11 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             }
 
             CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0f, -(value));
-            Ti2DMatrix * matrix = [[Ti2DMatrix alloc] initWithMatrix:transform];
 
-            [toolbarViewProxy replaceValue:[NSNumber numberWithInt:(7 << 16)] forKey:@"curve" notification:YES];
-            [toolbarViewProxy replaceValue:[NSNumber numberWithFloat:1] forKey:@"duration" notification:YES];
-            [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
-            [toolbarview setTransform_:matrix];
+            NSLog(@"[TiDAKBC] extendSafeArea INIT transform: value=%f, safeAreaValue=%f, ignoreExtendSafeArea=%d, bottomPadding=%f",
+                  value, safeAreaValue, ignoreExtendSafeArea, bottomPadding);
+
+            toolbarview.transform = transform;
 
         }
         
@@ -578,10 +876,14 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
             if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
                 svBottomInsets = svBottomInsets - toolbarDiff;
+                
+                NSLog ( @"+++++++++++++++++++++++++++++ svBottomInsets A %f ",svBottomInsets);
+
             }
             else if (self->extendSafeArea == true && self->ignoreExtendSafeArea == false){
                 svBottomInsets = svBottomInsets - bottomPadding;
 //                svBottomInsets = svBottomInsets - toolbarDiff - (toolbarview.frame.size.height - bottomPadding);
+                NSLog ( @"+++++++++++++++++++++++++++++ svBottomInsets B %f ",svBottomInsets);
 
             }
 
@@ -616,6 +918,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             bottomHeight = 0;
 
             bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets;
+            
+            
+            NSLog ( @"+++++++++++++++++++++++++++++ bottomHeight %f ",bottomHeight);
+
         }
         
         
@@ -689,6 +995,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     
     else if ((isTabGroup == true) && autoScrollToBottomDone == false && (autoScrollToBottom == true || autoScrollToBottom == false)){
         autoScrollToBottomDone = true;
+        NSLog(@"[TiDAKBC] INIT autoScrollToBottom (TABGROUP) | isTabGroup=%d, autoScrollToBottom=%d, autoScrollToBottomDone=%d",
+              isTabGroup, autoScrollToBottom, autoScrollToBottomDone);
         
         CGFloat toolbarDiff = (toolbarResizeDiff + bottomPadding);
         
@@ -739,32 +1047,31 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
    
 
     
-    
+    NSLog(@"[TiDAKBC] KVO ENTRY | keyPath=%@, objectClass=%s, keyboardVis=%d",
+          keyPath ?: @"(null)",
+          object ? NSStringFromClass([object class]).UTF8String : "(null)",
+          keyboardVisible);
+
+
+
+
     if([keyPath isEqualToString:@"bounds"] && object == toolbarview) {
         CGRect toolbarviewFrame = [[object valueForKeyPath:keyPath] CGRectValue];
-        //CGFloat newHeight = (initialKeyboardTriggerOffset + (toolbarviewFrame.size.height - initalToolbarViewFrame.size.height));
-        
         CGFloat newHeight = toolbarviewFrame.size.height;
 
-        if (initialLastInputViewFrameHeight == 0){
+        NSLog(@"[TiDAKBC] KVO TOOLBAR BOUNDS | keyPath=%@, oldH=%.0f (initialLast=%f), newH=%.0f, lastInputAccH=%.0f, diff=%.2f",
+              keyPath, initialLastInputViewFrameHeight, initialLastInputViewFrameHeight,
+              newHeight, lastInputViewFrameHeight, newHeight - lastInputViewFrameHeight);
+
+        if (initialLastInputViewFrameHeight == 0) {
             initialLastInputViewFrameHeight = newHeight;
+            NSLog(@"[TiDAKBC] KVO TOOLBAR BOUNDS | init baseline: initialLastInputViewFrameH=%.0f", newHeight);
         }
-        
-        if (isTabGroup == false){
-            if (extendSafeArea == true && ignoreExtendSafeArea == true){
-                    newHeight = newHeight - bottomPadding;
-            }
-        }
-        
+
         if (lastInputViewFrameHeight != newHeight) {
-            manualKeyboardResize = true;
-
-            toolbarResizeDiff = (toolbarviewFrame.size.height - initialKeyboardTriggerOffset);
-
-            lastInputViewFrameHeight = newHeight;
-            inputViewFrame.size.height = newHeight;
-
-            inputView.frame = inputViewFrame;
+            [self handleToolbarBoundsChangeToHeight:newHeight];
+        } else {
+            NSLog(@"[TiDAKBC] KVO TOOLBAR BOUNDS | SKIPPED: no height change");
         }
     }
 
@@ -775,6 +1082,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         if (initalScrollingViewHeight != proxyView.frame.size.height){
 
             if ((isNavigationWindow == true || isTabGroup == true) && autoScrollToBottomDone == false && autoScrollToBottom == true && initalScrollingViewHeight > 0){
+            NSLog(@"[TiDAKBC] INIT autoScrollToBottom (NAV/TAB) | isNav=%d, isTab=%d, autoScrollToBottomDone=%d, autoScrollToBottom=%d, initalScrollingViewHeight=%f",
+                  isNavigationWindow, isTabGroup, autoScrollToBottomDone, autoScrollToBottom, initalScrollingViewHeight);
             }
             initalScrollingViewHeight = proxyView.frame.size.height;
         }
@@ -794,20 +1103,26 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             contentHeightSet = true;
             
             
-            if (self->autoScrollToBottom == true){
-                
-                //[self runAfterDelay:0.1 block:^{
-              //  dispatch_async(dispatch_get_main_queue(), ^{
+           if (self->autoScrollToBottom == true){
+                // During keyboard show, contentSize KVO fires synchronously inside
+                // applyScrollViewInset — the table view is still laying out, so
+                // contentOffset assignments get lost. Let the settle baseline path
+                // handle it after the keyboard animation settles.
+                if (!keyboardShowing) {
                     CGSize svContentSize = contentSize;
                     CGSize svBoundSize = self->nativeScrollView.frame.size;
-                    CGFloat svBottomInsets = self->nativeScrollView.contentInset.bottom;
-                    CGFloat bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + self->bottomPadding;
+                    CGFloat bottomHeight = svContentSize.height - svBoundSize.height + self->nativeScrollView.contentInset.bottom + self->nativeScrollView.safeAreaInsets.bottom;
                     CGFloat bottomWidth = svContentSize.width - svBoundSize.width;
                     CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
-                    self->nativeScrollView.contentOffset = newOffset;
-              //  });
-                
-               // }];
+                    CGFloat currentOffsetY = self->nativeScrollView.contentOffset.y;
+                    if (fabs(currentOffsetY - bottomHeight) > 1.0) {
+                        NSLog(@"[TiDAKBC] contentSize change autoScrollToBottom | SETTING contentOffset.y from %f to %f (diff=%f)",
+                              currentOffsetY, bottomHeight, fabs(currentOffsetY - bottomHeight));
+                        self->nativeScrollView.contentOffset = newOffset;
+                    }
+                } else {
+                    NSLog(@"[TiDAKBC] contentSize change autoScrollToBottom | SKIPPED (keyboard show, handled by settle baseline)");
+                }
             }
             if (self->proxyView.layer.opacity < 1.0){
                 dispatch_async(dispatch_get_main_queue(), ^{
@@ -826,14 +1141,128 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
 - (void)keyboardDidShow:(NSNotification *)notification
 {
+    if (![self isOwnFirstResponder]) {
+        NSLog(@"[TiDAKBC] keyboardDidShow | SKIPPED — text field is not first responder");
+        return;
+    }
     keyboardVisible = true;
     keyboardwillHide = false;
+    NSLog(@"[TiDAKBC] === keyboardDidShow ===");
+
+   // Store settled shift value (NOT toolbarview.transform which may be stale)
+    // IMPORTANT: Do NOT set initialAccessoryViewFrame here — let the first KVO callback do it
+    // so we get a fresh baseline after keyboardDidShow and insets are properly applied.
+    self->lastAccessoryViewHeight = self->lastInputAccessoryViewFrame.size.height;
+
+   // Guard against overwriting settledShift during an active toolbar resize + iOS animation cycle:
+    // If initialAcc is CGRectNull (fresh show) → always set it.
+    // If it's already been touched by KVO TOOLBAR RESIZE DETECTED or settle baseline of a prior pass,
+    // and we're mid-animation (keyboardTransitionDuration still active), skip — let the next cycle handle it.
+    BOOL isFreshShow = CGRectIsNull(self->initialAccessoryViewFrame);
+
+   // Only overwrite settledShift on fresh keyboard show OR if current value was 0 (from didHide reset)
+    if (!isFreshShow && self->settledShift != 0) {
+        NSLog(@"[TiDAKBC] keyboardDidShow | SKIPPED overwriting settledShift=%f during active cycle",
+              self->settledShift);
+    } else {
+        self->settledShift = self->lastShiftValue;
+    }
+
+    self->hasSettledShift = YES;
+    self->cachedSwipeTransform = CGAffineTransformIdentity;
+
+    NSLog(@"[TiDAKBC] keyboardDidShow | settledShift=%f lastShiftValue=%f lastAccH=%.0f accFrame={{%f,%f},{%f,%f}} contentInset.bottom=%.0f keyboardInsetSettled=%d",
+          self->settledShift, self->lastShiftValue, self->lastAccessoryViewHeight,
+          self->lastInputAccessoryViewFrame.origin.x, self->lastInputAccessoryViewFrame.origin.y,
+          self->lastInputAccessoryViewFrame.size.width, self->lastInputAccessoryViewFrame.size.height,
+          nativeScrollView ? nativeScrollView.contentInset.bottom : -1, keyboardInsetSettled);
+
+    // Note: autoScrollToBottom is now handled in the first KVO callback after insets are set,
+    // so we don't need to scroll here with stale contentInset.bottom values.
+    self->keyboardShowing = NO;
+}
+
+- (void)keyboardWillHide:(NSNotification *)notification
+{
+    if (![self isOwnFirstResponder]) {
+        NSLog(@"[TiDAKBC] keyboardWillHide | SKIPPED — text field is not first responder");
+        return;
+    }
+    keyboardwillHide = true;
+
+    // ProMotion: Stop CALayer swipe updates (keyboardwillHide=YES blocks KVO swipe section)
+    // DO NOT reset to Identity - toolbar would jump to bottom while keyboard bounces back
+
+    CGRect keyboardEndFrameWindow;
+    [[notification.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] getValue: &keyboardEndFrameWindow];
+
+    self->animationCurve = [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
+    [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
+
+    NSLog(@"[TiDAKBC] === keyboardWillHide | curve=%ld, duration=%f, keyboardFrame={{%f,%f},{%f,%f}}, scrollView.bottom=%.0f, lastShiftValue=%f, toolbarH=%.0f, keyboardVis=%d ===",
+          (long)self->animationCurve, keyboardTransitionDuration,
+          keyboardEndFrameWindow.origin.x, keyboardEndFrameWindow.origin.y,
+          keyboardEndFrameWindow.size.width, keyboardEndFrameWindow.size.height,
+          nativeScrollView ? nativeScrollView.contentInset.bottom : -1, lastShiftValue,
+          toolbarview.frame.size.height, keyboardVisible);
+
+    [self fireEventForKeyboardFrameInView:keyboardEndFrameWindow visible:false];
+
 }
 
 - (void)keyboardDidHide:(NSNotification *)notification
 {
+    // Guard: keyboardDidHide fires for ALL proxy instances, but only the one
+    // that was showing the keyboard (keyboardVisible=YES) should reset state.
+    // By the time this fires, the text field has resigned first responder,
+    // so we check keyboardVisible which was set to YES in keyboardDidShow.
+    if (!keyboardVisible && !keyboardwillHide) {
+        NSLog(@"[TiDAKBC] keyboardDidHide | SKIPPED — this proxy was not showing the keyboard");
+        return;
+    }
+
     keyboardVisible = false;
     keyboardwillHide = false;
+    NSLog(@"[TiDAKBC] === keyboardDidHide | scrollView.bottom=%.0f, lastShiftValue=%f, toolbarH=%.0f, accFrame={{%f,%f},{%f,%f}} ===",
+          nativeScrollView ? nativeScrollView.contentInset.bottom : -1, lastShiftValue,
+          toolbarview.frame.size.height,
+          lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
+          lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
+
+    // ProMotion: Reset CALayer from frozen position for next keyboard show
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    self->toolbarview.layer.affineTransform = CGAffineTransformIdentity;
+    self->cachedSwipeTransform = CGAffineTransformIdentity;
+    [CATransaction commit];
+
+   // Reset for next keyboard show
+    self->initialAccessoryViewFrame = CGRectNull;
+    self->lastInputAccessoryViewFrame = CGRectZero;
+    self->autoScrollToBottomDoneAfterShow = NO;
+    self->hasSettledShift = NO;
+    self->keyboardInsetSettled = NO;
+
+    // Reset autoSize bottom constraint — only needed if this proxy had keyboard translation active
+    BOOL wasInKeyboardMode = (self->settledShift != 0);
+    self->settledShift = 0;
+
+    if (wasInKeyboardMode) {
+        // Reset autoSize bottom constraint to toolbar-only (no keyboard translation)
+        [self applyAutoSizeBottomConstraintWithTranslation:0];
+    }
+
+    // Reset scroll-up trigger so the next drag can re-trigger showKeyboardOnScrollUp
+    showKeyboardOnScrollUpTriggered = NO;
+
+    NSLog(@"[TiDAKBC] === keyboardDidHide | RESET complete: initialAcc=NULL, hasSettled=NO, insetSettled=NO, settledShift=0 ===");
+}
+
+- (BOOL)isOwnFirstResponder
+{
+    BOOL textviewIsFirst = (textview != nil && textview.isFirstResponder);
+    BOOL textFieldIsFirst = (textField != nil && textField.isFirstResponder);
+    return textviewIsFirst || textFieldIsFirst;
 }
 
 - (void)keyboardWillShow:(NSNotification *)notification
@@ -841,34 +1270,151 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     CGRect keyboardEndFrameWindow;
     [[notification.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] getValue: &keyboardEndFrameWindow];
 
+    // Guard: UIKeyboard notifications are global — all proxy instances receive them.
+    // Only the proxy whose text field is the first responder should apply changes.
+    if (![self isOwnFirstResponder]) {
+        NSLog(@"[TiDAKBC] keyboardWillShow | SKIPPED — text field is not first responder");
+        return;
+    }
+
     keyboardwillHide = false;
 
-    [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] getValue:&animationCurve];
-
+    self->animationCurve = [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
     [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
+
+    NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, keyboardFrame={{%f,%f},{%f,%f}} ===",
+          (long)self->animationCurve, keyboardTransitionDuration,
+          keyboardEndFrameWindow.origin.x, keyboardEndFrameWindow.origin.y,
+          keyboardEndFrameWindow.size.width, keyboardEndFrameWindow.size.height);
+    self->keyboardShowing = YES;
+    // Reset so the settle baseline KVO callback can handle the scroll on this keyboard show cycle
+    self->autoScrollToBottomDoneAfterShow = NO;
+
+   // Reset cached swipe transform and actual CALayer transform
+    // When swiping is active, CALayer may have a swipe transform that conflicts with
+    // the UIView transform keyboardWillShow is about to apply.
+    // Only do this on initial keyboard show — during toolbar resize the KVO path
+    // already reset the CALayer, and resetting here would cause a visual snap-back.
+    // Also skip after spring-settled: CALayer has the swipe transform, resetting it
+    // would make the toolbar disappear (UIView transform not synced until spring-settled).
+    if (!keyboardVisible && !self->springSettledJustHappened) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        toolbarview.layer.affineTransform = CGAffineTransformIdentity;
+        [CATransaction commit];
+        self->cachedSwipeTransform = CGAffineTransformIdentity;
+    }
+
+    // After a toolbar resize, iOS re-adjusts the keyboard — allow UIView animation to apply the transform
+    if (self->manualKeyboardResize) {
+        self->manualKeyboardResize = false;
+        NSLog(@"[TiDAKBC] keyboardWillShow resetting manualKeyboardResize (toolbar resize) | toolbarResizeDiff=%f",
+              self->toolbarResizeDiff);
+    }
 
     [self fireEventForKeyboardFrameInView:keyboardEndFrameWindow visible:true];
 
-    if (isNavigationWindow == false){
-//        lastShiftValue = 0;
+    // Capture fresh accessory view position from KVO before computing translation.
+    // TiUIWindowProxy applies different layout constraints for extendSafeArea=false,
+    // so the initialAccFrameY captured at startup may not match where iOS actually
+    // positions the accessory view when the keyboard appears. This causes deltaY to
+    // be wrong and the toolbar to sit behind the keyboard.
+    if (!keyboardVisible && CGRectIsNull(lastInputAccessoryViewFrame)) {
+        // First keyboard show — use actual iOS-computed accessory frame.y as baseline
+        // This ensures deltaY is computed from what iOS actually rendered, not a stale value
+        CGFloat actualAccY = lastInputAccessoryViewFrame.origin.y;
+        CGFloat deltaFromKeyboard = keyboardEndFrameWindow.origin.y - actualAccY;
+        // initialAccFrameY = actualAccY + deltaFromKeyboard = keyboardEndFrameWindow.origin.y
+        // This way deltaY = initialAccFrameY - curY will use iOS's actual positions
+        initialAccessoryViewFrameYWhenHidden = keyboardEndFrameWindow.origin.y;
+        NSLog(@"[TiDAKBC] keyboardWillShow | FRESH baseline: initialAccFrameY=%f (from keyboardY=%.0f, actualAccY=%.0f)",
+              initialAccessoryViewFrameYWhenHidden, keyboardEndFrameWindow.origin.y, actualAccY);
     }
+
+ // Update scroll view insets for keyboard BEFORE computing autoScrollToBottom offset.
+    // Without this, contentInset.bottom stays at safe-area value (~27) and the computed
+    // scroll position is too large — items end up hidden behind the keyboard.
+    if (nativeScrollView != nil) {
+        NSLog(@"[TiDAKBC] keyboardWillShow | BEFORE applyScrollViewInset: contentInset.bottom=%.0f", nativeScrollView.contentInset.bottom);
+        [self applyScrollViewInset:keyboardEndFrameWindow];
+        // Compute translation for autoSize bottom constraint
+        if (!CGRectIsEmpty(lastInputAccessoryViewFrame)) {
+            CGFloat trans = [self computeToolbarTranslation:lastInputAccessoryViewFrame];
+            [self applyAutoSizeBottomConstraintWithTranslation:trans];
+        }
+        NSLog(@"[TiDAKBC] keyboardWillShow | AFTER applyScrollViewInset: contentInset.bottom=%.0f", nativeScrollView.contentInset.bottom);
+
+        // Animate scroll-to-bottom in sync with the keyboard.
+        // contentInset.bottom was already set above by applyScrollViewInset,
+        // so the target accounts for the keyboard height and toolbar.
+        // In autoSize mode, contentInset.bottom is NOT updated, so use translation + toolbarH instead.
+        if (self->autoScrollToBottom) {
+            UIScrollView *sv = nativeScrollView;
+            if (sv.contentSize.height > sv.frame.size.height) {
+                CGFloat bottomHeight;
+                if (autoSizeAndKeepScrollingViewAboveToolbar) {
+                    CGFloat trans = CGRectIsEmpty(lastInputAccessoryViewFrame) ? 0 : [self computeToolbarTranslation:lastInputAccessoryViewFrame];
+                    bottomHeight = sv.contentSize.height - sv.frame.size.height + trans + toolbarview.frame.size.height + sv.safeAreaInsets.bottom;
+                } else {
+                    bottomHeight = sv.contentSize.height - sv.frame.size.height + sv.contentInset.bottom + sv.safeAreaInsets.bottom;
+                }
+                if (!keyboardVisible) {
+                    // Initial keyboard show — animate in sync with keyboard
+                    CGPoint targetOffset = CGPointMake(0, bottomHeight);
+                    CGFloat currentY = sv.contentOffset.y;
+                    NSLog(@"[TiDAKBC] keyboardWillShow | animated autoScrollToBottom: contentOffset.y=%f -> target=%.0f (contentInset.bottom=%.0f, safeAreaInsets.bottom=%.0f)",
+                          currentY, bottomHeight, sv.contentInset.bottom, sv.safeAreaInsets.bottom);
+                    if (fabs(currentY - bottomHeight) > 1.0) {
+                        [UIView animateWithDuration:keyboardTransitionDuration
+                                              delay:0
+                                            options:(self->animationCurve << 16) | UIViewAnimationOptionBeginFromCurrentState
+                                         animations:^{
+                            sv.contentOffset = targetOffset;
+                        } completion:nil];
+                        NSLog(@"[TiDAKBC] keyboardWillShow | animated autoScrollToBottom to y=%.0f", bottomHeight);
+                    }
+                } else if (fabs(sv.contentOffset.y - bottomHeight) > 1.0) {
+                    // Toolbar resize while keyboard visible — inset changed, scroll to new bottom
+                    NSLog(@"[TiDAKBC] keyboardWillShow | toolbar resize autoScrollToBottom: contentOffset.y=%f -> target=%.0f (contentInset.bottom=%.0f, safeAreaInsets.bottom=%.0f)",
+                          sv.contentOffset.y, bottomHeight, sv.contentInset.bottom, sv.safeAreaInsets.bottom);
+                    sv.contentOffset = CGPointMake(0, bottomHeight);
+                }
+            }
+        }
+    }
+
+   // Re-apply toolbar position when keyboard will show with correct animation.
+    // On fresh shows (keyboard not yet visible) reset swipe state so the animation
+    // starts from the base position. On re-shows (keyboard already visible) just
+    // apply the translation directly without resetting state.
+    if (!CGRectIsEmpty(lastInputAccessoryViewFrame) && nativeScrollView != nil) {
+        CGFloat trans = [self computeToolbarTranslation:lastInputAccessoryViewFrame];
+        if (!keyboardVisible && !self->springSettledJustHappened) {
+            lastShiftValue = 0;
+            isSwiping = NO;
+        }
+        NSLog(@"[TiDAKBC] keyboardWillShow | apply translation=%f, lastAcc={{%f,%f},{%f,%f}}",
+              trans, lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
+              lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
+        [self applyToolbarTranslation:trans
+                                animated:YES duration:keyboardTransitionDuration
+                                   curve:self->animationCurve];
+        self->settledShift = trans;
+        self->lastShiftValue = trans;
+    }
+    // When switching keyboards (keyboard already visible), the KVO swipe baseline
+    // (initialAccessoryViewFrame) still points to the previous keyboard's position.
+    // Update it to the new position so swipe deltas are computed correctly.
+    if (keyboardVisible && !CGRectIsEmpty(lastInputAccessoryViewFrame)) {
+        self->initialAccessoryViewFrame = lastInputAccessoryViewFrame;
+        NSLog(@"[TiDAKBC] keyboardWillShow | keyboard switch: updated initialAccessoryViewFrame to {{%f,%f},{%f,%f}}",
+              lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
+              lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
+    }
+
+    // Clear the flag at the end of keyboardWillShow regardless of which path was taken
+    self->springSettledJustHappened = NO;
 }
-
-- (void)keyboardWillHide:(NSNotification *)notification
-{
-    keyboardwillHide = true;
-    CGRect keyboardEndFrameWindow;
-    [[notification.userInfo valueForKey:UIKeyboardFrameEndUserInfoKey] getValue: &keyboardEndFrameWindow];
-
-    [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] getValue:&animationCurve];
-
-    [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
-
-    [self fireEventForKeyboardFrameInView:keyboardEndFrameWindow visible:false];
-
-}
-
-
 
 - (void)teardownKeyboardPanning
 {
@@ -891,6 +1437,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     minKeyBoardHeight = 0;
     inputView = nil;
     inputViewFrame = CGRectZero;
+    [self uninstallScrollDelegateProxy];
 }
 
 
@@ -943,954 +1490,271 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
 
 
+
 - (void)updateKeyboardPanningViews:(CGRect)keyboardFrameInView withScrollView:(UIScrollView*)scrollView withBottomValue:(CGFloat)bottomvalue
 {
-    CGFloat keyboardHeight = (keyboardFrameInView.size.height - inputViewFrame.size.height);
-    CGRect toolbarViewFrame = toolbarview.frame;
-    CGFloat keyboardY = (keyboardFrameInView.origin.y + inputViewFrame.size.height);
-    CGFloat toolbarDiff = (toolbarResizeDiff + bottomPadding);
-    CGFloat innerLastKeyboardHeight = lastKeyboardHeight;
-    CGFloat diff = inputView.frame.size.height - toolbarview.frame.size.height;
-    CGFloat superframe = [inputView inputAcesssorySuperviewFrame].size.height;
-    CGFloat diff2 = superframe - toolbarview.frame.size.height;
-    CGFloat stopValue = -1;
-    CGFloat correctedShift = 0;
-    BOOL animationC = false;
-    CGFloat substract = (diff2 - bottomvalue - safeAreaValue);
-    
-    CGFloat height = 0;
-    height = self.view.frame.size.height;
+    CGFloat t = [self computeToolbarTranslation:keyboardFrameInView];
+    BOOL isTabGroup_ = isTabGroup;
+    BOOL isNavWindow = isNavigationWindow;
+    BOOL extendSafeArea_ = extendSafeArea;
 
-    if (addPixelSet == false){
-        addPixelSet = true;
-        addPixel =  (bottomPadding - (tabgroupHeight-bottomPadding)) -  (tabgroupHeight-bottomPadding);
-        if (isNavigationWindow == true){
-            isNavigationWindowBottomDiff =  ((tabgroupHeight + addPixel) -  ( (tabgroupHeight-bottomPadding) - bottomPadding)) + 1;
-        }
-    }
-    
-    
-    if (keyboardVisible == false){
-        manualKeyboardResize = false;
+    // Apply toolbar transform (CALayer for swipe, UIView animation for rest)
+    if (!isSwiping && !manualKeyboardResize && !self.manualPanning) {
+        [self applyToolbarTranslation:t animated:YES duration:keyboardTransitionDuration curve:animationCurve];
+    } else if (isSwiping || keyboardwillHide) {
+        // CALayer already handles swipe; just update insets and scroll-to-bottom here
     }
 
+    // Apply contentInset
+    [self applyScrollViewInset:keyboardFrameInView];
 
-    if (manualKeyboardResize == false){
+    // Auto-scroll to bottom
+    [self scrollToBottomIfNeeded];
 
-        if (toolbarInputViewDiff == 0 && bottomvalue > 0){
-            toolbarInputViewDiff = substract;
-            insetBottomCorrection = toolbarInputViewDiff + toolbarResizeDiff;
-        }
-        CGFloat shift = bottomvalue + bottomPadding;
-        
-        //////NSLog ( @"++++ INIT bottomvalue shift  (height - keyboardY) + toolbarInputViewDiff: %f  %f  %f ",bottomvalue,shift,(height - keyboardY) + toolbarInputViewDiff);
-
-        
-        ////NSLog ( @"++++ tabgroupHeight: %f ",tabgroupHeight);
-        ////NSLog ( @"++++ (tabgroupHeight-bottomPadding): %f ",(tabgroupHeight-bottomPadding));
-
-        
-        
-        if (tabgroupHeight > 0){
-
-            if (isNavigationWindow == true){
-                shift = (shift + tabgroupHeight);
-            }
-        }
-        
-       // NSLog ( @"++++ AFTER INIT bottomvalue shift: %f  %f ",bottomvalue,shift);
-
-        
-       
-        
-        if (altAddPixelSet == false && isTabGroup == false){
-            if (((shift - keyboardHeight) - (toolbarview.frame.size.height - self->initialKeyboardTriggerOffset)) > 0){
-                altAddPixelSet = true;
-                altAddPixel = ((shift - keyboardHeight) - (toolbarview.frame.size.height - self->initialKeyboardTriggerOffset));
-                
-              //  NSLog ( @"++++ altAddPixel   initialLastInputViewFrameHeight  : %f  %f ",altAddPixel,self->initialLastInputViewFrameHeight);
-
-                
-                if (altAddPixel > (self->initialLastInputViewFrameHeight+1)) {
-                 //   NSLog ( @"++++ altAddPixe > ");
-
-                    altAddPixel = 0;
-                }
-            }
-        }
-        
-        
-        
-      //  NSLog ( @"++++ altAddPixel: %f ",altAddPixel);
-
-        
-        
-
-        //NSLog ( @"++++ addPixel: %f ",addPixel);
-        //NSLog ( @"++++ isNavigationWindowBottomDiff: %f ",isNavigationWindowBottomDiff);
-
-            
-        //if (extendSafeArea == true && ignoreExtendSafeArea == false){
-        if (isTabGroup == true) {
-            
-            if (isNavigationWindow == true){
-
-                
-                //////NSLog ( @"++++ bottomvalue tabgroupHeight (toolbarview.frame.size.height - initialKeyboardTriggerOffset) shift: %f  %f  %f  %f ",bottomvalue,tabgroupHeight,(toolbarview.frame.size.height - self->initialKeyboardTriggerOffset),shift);
-
-               // shift = bottomvalue + tabgroupHeight - (toolbarview.frame.size.height - self->initialKeyboardTriggerOffset);
-
-                
-                
-                
-                
-                    shift = bottomvalue + tabgroupHeight - (toolbarview.frame.size.height - self->initialKeyboardTriggerOffset) - bottomPadding - (((tabgroupHeight-bottomPadding) - bottomPadding) - bottomPadding) + isNavigationWindowBottomDiff;
-                
-                //////NSLog ( @"++++ AFTER bottomvalue tabgroupHeight (toolbarview.frame.size.height - initialKeyboardTriggerOffset) shift: %f  %f  %f  %f ",bottomvalue,tabgroupHeight,(toolbarview.frame.size.height-self->initialKeyboardTriggerOffset),shift);
-
-            }
-            else {
-                
-                //////NSLog ( @"++++ bottomvalue tabgroupHeight (toolbarview.frame.size.height - initialKeyboardTriggerOffset) shift: %f  %f  %f  %f ",bottomvalue,tabgroupHeight,(toolbarview.frame.size.height - self->initialKeyboardTriggerOffset),shift);
-
-                
-                
-                //////NSLog ( @"++++ addPixel: %f ",addPixel);
-
-                
-                shift = bottomvalue + tabgroupHeight - (toolbarview.frame.size.height - self->initialKeyboardTriggerOffset) - (tabgroupHeight-bottomPadding) - addPixel;
-
-                
-                
-                
-                //////NSLog ( @"++++ AFTER bottomvalue tabgroupHeight (toolbarview.frame.size.height - initialKeyboardTriggerOffset) shift: %f  %f  %f  %f ",bottomvalue,tabgroupHeight,(toolbarview.frame.size.height-self->initialKeyboardTriggerOffset),shift);
-
-                
-               // shift = bottomvalue + tabgroupHeight - (tabgroupHeight-bottomPadding) - toolbarResizeDiff + correctingToolbarDiff;
-            }
-        }
-        else {
-          //  NSLog ( @"++++ toolbarResizeDiff (toolbarview.frame.size.height - self->initialKeyboardTriggerOffset): %f %f",toolbarResizeDiff, (toolbarview.frame.size.height - self->initialKeyboardTriggerOffset));
-
-            if (extendSafeArea == true && ignoreExtendSafeArea == true){
-                shift = bottomvalue - toolbarResizeDiff;
-            }
-            else if (extendSafeArea == true && ignoreExtendSafeArea == false){
-                shift = bottomvalue - toolbarResizeDiff + bottomPadding;
-            }
-            else {
-                shift = bottomvalue - toolbarResizeDiff;
-            }
-            
-            
-            
-            
-            if (altAddPixel > 0){
-                shift = shift - altAddPixel;
-            }
-            
-          //
-           // NSLog ( @"++++ altAddPixel: %f ",altAddPixel);
-            
-          //  NSLog ( @"++++ AFTER altAddPixel shift: %f ",shift);
-
-            
-        }
-
-
-
-       // NSLog ( @"++++ updateKeyboardPanningViews lastShiftValue shift: %f %f",lastShiftValue, shift);
-
-
-
-        if (minKeyBoardHeight == 0){
-            minKeyBoardHeight =  (int)(keyboardHeight);
-        }
-
-        CGFloat frameOriginY = toolbarViewFrame.origin.y;
-        // ////////NSLog ( @"++++ frameOriginY: %f ",frameOriginY);
-
-
-
-        CGFloat SizeY = self.view.frame.size.height - toolbarViewFrame.size.height;
-        if (lastY == 0){
-            lastY = frameOriginY;
-        }
-
-        //////////////NSLog ( @"++++ frameOriginY  height  safeAreaValue  self.view.frame.origin.y: %f  %f  %f  %f ",frameOriginY, height, safeAreaValue,self.view.frame.origin.y);
-
-
-
-        if (lastShiftValue < shift){
-
-
-            if ((shift > safeAreaValue) && (shift > (shift - safeAreaValue)) ){
-
-            }
-
-            else if ((shift > safeAreaValue) && (shift <= (shift - safeAreaValue)) ){
-
-            }
-
-            else {
-                if (shift > safeAreaValue) {
-
-                }
-                else {
-                    shift = safeAreaValue;
-
-                }
-            }
-            shift = (shift);
-        }
-
-        else {
-            if ((shift > safeAreaValue) && (shift > (shift - safeAreaValue)) ){
-
-            }
-
-            else if ((shift > safeAreaValue) && (shift <= (shift - safeAreaValue)) ){
-
-            }
-
-            else {
-                if (shift > safeAreaValue) {
-
-                }
-                else {
-                    shift = safeAreaValue;
-
-                }
-            }
-            shift = (shift);
-        }
-
-        if (lastShiftValue != shift){
-
-
-            //////////NSLog ( @" **********************  lastShiftValue != shift  %f   %f:",lastShiftValue,shift);
-
-
-            shift = (shift);
-
-
-            if ((shift >= safeAreaValue) && (frameOriginY < height)){
-
-
-              //  NSLog ( @"+++++++++++++++++++++++++++++ AA ");
-
-
-                ////////NSLog ( @"+++++++++++++++++++++++ (shift >= 0) && (frameOriginY < height)");
-
-
-                initialContentOffset = scrollView.contentOffset;
-
-                if (keyboardHeight > minKeyBoardHeight){
-                    maxKeyBoardHeight = (int)keyboardHeight;
-                }
-
-                if (keyboardHeight == minKeyBoardHeight && lastKeyboardHeight > 0 && lastKeyboardHeight == maxKeyBoardHeight && maxKeyBoardHeight > 0){
-                     //[UIView setAnimationsEnabled:NO];
-                }
-                else if (keyboardHeight == maxKeyBoardHeight && lastKeyboardHeight > 0 && maxKeyBoardHeight > minKeyBoardHeight && lastKeyboardHeight == minKeyBoardHeight){
-                     //[UIView setAnimationsEnabled:NO];
-                }
-
-                CGFloat bottomInset = shift + toolbarViewFrame.size.height;
-                //CGFloat bottomInset = shift + keyboardHeight + inputViewFrame.size.height - tabgroupHeight;
-
-
-                ////////NSLog ( @"+++++++++++++++++++++++++++++ AA bottomInset %f: ",bottomInset);
-
-
-
-                if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                        bottomInset = bottomInset - toolbarDiff;
-                }
-                
-                /*
-                else {
-                    if (isTabGroup == true) {
-                      //  bottomInset = bottomInset + tabgroupHeight;
-                        
-                        
-                       ////////NSLog ( @"+++++++++++++++++++++++++++++ bottomInset %f: ",bottomInset);
-
-                        
-                    }
-                    else {
-                        if (self->ignoreExtendSafeArea == false) {
-                            bottomInset = bottomInset - bottomPadding;
-                        }
-                    }
-                }
-                 */
-
-
-                if (manualKeyboardResize == false && self.manualPanning == false) {
-                    CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0f, -(shift));
-                    Ti2DMatrix * matrix = [[Ti2DMatrix alloc] initWithMatrix:transform];
-
-                    [toolbarViewProxy replaceValue:[NSNumber numberWithInt:(7 << 16)] forKey:@"curve" notification:YES];
-                    [toolbarViewProxy replaceValue:[NSNumber numberWithDouble:keyboardTransitionDuration]  forKey:@"duration" notification:YES];
-                    [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
-                    [toolbarview setTransform_:matrix];
-                }
-                else if (manualKeyboardResize == false && self.manualPanning == true) {
-
-                    CGAffineTransform transform = CGAffineTransformMakeTranslation(0.0f, -(shift));
-                    Ti2DMatrix * matrix = [[Ti2DMatrix alloc] initWithMatrix:transform];
-
-                    [toolbarViewProxy replaceValue:[NSNumber numberWithInt:(7 << 16)] forKey:@"curve" notification:YES];
-                    [toolbarViewProxy replaceValue:[NSNumber numberWithInt:0] forKey:@"duration" notification:YES];
-                    [toolbarViewProxy replaceValue:matrix forKey:@"transform" notification:YES];
-                    [toolbarview setTransform_:matrix];
-                }
-                else {
-
-                }
-
-
-                if (keyboardVisible == true){
-
-                    if (autoAdjustBottomPadding == true && autoSizeAndKeepScrollingViewAboveToolbar == false){
-                        if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                            [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, (bottomInset + toolbarDiff - self->bottomPadding), 0)];
-                            scrollView.scrollIndicatorInsets = scrollView.contentInset;
-                        }
-
-                        else if (self->extendSafeArea == true && self->ignoreExtendSafeArea == false){
-                            
-                            //////NSLog ( @"+++++++++++++++++++++++++++++ extendSafeArea == true  ignoreExtendSafeArea == false %f ",bottomInset);
-                            //////NSLog ( @"+++++++++++++++++++++++++++++ AFTER extendSafeArea == true  ignoreExtendSafeArea == false %f ",(bottomInset-self->bottomPadding));
-
-                            
-                            [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, (bottomInset - self->bottomPadding), 0)];
-                            scrollView.scrollIndicatorInsets = scrollView.contentInset;
-                        }
-
-
-
-                        else {
-                            
-                            if (isTabGroup == true) {
-                                
-                                if (isNavigationWindow == false){
-                                    [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, bottomInset, 0)];
-                                }
-                                else {
-                                    [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, bottomInset, 0)];
-                                }
-                                scrollView.scrollIndicatorInsets = scrollView.contentInset;
-                            }
-                            else {
-                                if (self->ignoreExtendSafeArea == false){
-                                    //////NSLog ( @"+++++++++++++++++++++++++++++ ignoreExtendSafeArea == false %f ",bottomInset);
-
-                                    
-                                    //////NSLog ( @"+++++++++++++++++++++++++++++ toolbarDiff %f ",toolbarDiff);
-
-                                    
-                                    [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, (bottomInset), 0)];
-                                    scrollView.scrollIndicatorInsets = scrollView.contentInset;
-                                    
-                                    //////NSLog ( @"+++++++++++++++++++++++++++++ AFTER ignoreExtendSafeArea == false %f ",(bottomInset + (toolbarDiff - self->bottomPadding)));
-
-                                }
-                                else {
-                                    //////NSLog ( @"+++++++++++++++++++++++++++++ ignoreExtendSafeArea == true %f ",bottomInset);
-
-                                    
-                                    [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, (bottomInset), 0)];
-                                    scrollView.scrollIndicatorInsets = scrollView.contentInset;
-
-                                    //////NSLog ( @"+++++++++++++++++++++++++++++ AFTER ignoreExtendSafeArea == true %f ",(bottomInset + (toolbarDiff - self->bottomPadding)));
-
-                                    
-                                }
-
-                            }
-                            
-                        }
-                    }
-                    
-                    if (self.manualPanning == false){
-                        
-                        if (autoScrollToBottom == true){
-                            
-                            CGSize svContentSize = scrollView.contentSize;
-                            CGSize svBoundSize = scrollView.frame.size;
-                            CGFloat svBottomInsets = scrollView.contentInset.bottom;
-                            
-                            CGFloat bottomHeight = 0;
-                            
-                            if (autoSizeAndKeepScrollingViewAboveToolbar == true){
-                                
-                                /*
-                                CGRect tableViewFrame = self->proxyView.frame;
-
-                                tableViewFrame.size.height = (keyboardFrameInView.origin.y - self->toolbarInputViewDiff - self->initialKeyboardTriggerOffset);
-
-                                //////NSLog ( @"  ################### tableViewFrame.size.height  ###################  %f ",tableViewFrame.size.height);
-
-                                
-                                self->proxyView.frame = tableViewFrame;
-                                
-                                */
-                                
-                                
-                                    
-                                    LayoutConstraint* layoutProperties = [(TiViewProxy *)self->_scrollingView layoutProperties];
-                                    layoutProperties->bottom = TiDimensionDip(self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+ shift);
-                                    [(TiViewProxy *)self->_scrollingView refreshView:nil];
-                                    
-                                    //NSLog ( @"  ################### keyboardvisible manualpanning autoScrollToBottom self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height + shift ###################  %f ",self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+ shift);
-                                
-                                
-                                
-                                svContentSize = scrollView.contentSize;
-                                svBoundSize = scrollView.frame.size;
-                                svBottomInsets = scrollView.contentInset.bottom;
-                                
-                                bottomHeight = 0;
-
-                                
-                                    bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets;
-                            }
-                            else {
-                                    bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + tabgroupHeight;
-                            }
-                            
-                            CGFloat bottomWidth = (svContentSize.width - svBoundSize.width);
-                            bottomHeight = (bottomHeight);
-                            
-                            
-                            if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                                //bottomHeight = bottomHeight + toolbarDiff;
-                            }
-                            
-                            ////NSLog ( @"+++++++++++++++++++++++++++++ contentOffset ");
-
-                            //CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
-                            
-                            //scrollView.contentOffset = newOffset;
-                            
-                        }
-                        else {
-                            if (autoSizeAndKeepScrollingViewAboveToolbar == true){
-                                
-                                CGSize svContentSize = scrollView.contentSize;
-                                CGSize svBoundSize = scrollView.frame.size;
-                                CGFloat svBottomInsets = scrollView.contentInset.bottom;
-                                
-                                CGFloat bottomHeight = 0;
-
-                                /*
-                                CGRect tableViewFrame = self->proxyView.frame;
-
-                                tableViewFrame.size.height = (keyboardFrameInView.origin.y - self->toolbarInputViewDiff - self->initialKeyboardTriggerOffset);
-
-                                //NSLog ( @"  ################### keyboardVisible tableViewFrame.size.height  ###################  %f ",tableViewFrame.size.height);
-
-                                
-                                self->proxyView.frame = tableViewFrame;
-                                */
-                                
-                                
-                                LayoutConstraint* layoutProperties = [(TiViewProxy *)self->_scrollingView layoutProperties];
-                                layoutProperties->bottom = TiDimensionDip(self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height);
-                                [(TiViewProxy *)self->_scrollingView refreshView:nil];
-
-                                //NSLog ( @"  ################### keyboardvisible self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height  ###################  %f ",self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height);
-
-                                
-                                svContentSize = scrollView.contentSize;
-                                svBoundSize = scrollView.frame.size;
-                                svBottomInsets = scrollView.contentInset.bottom;
-                                
-                                bottomHeight = 0;
-
-                                
-                                    bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets;
-                            }
-                        }
-                    }
-                    else {
-                        if (autoSizeAndKeepScrollingViewAboveToolbar == true){
-                            [UIView performWithoutAnimation:^{
-                                
-                                LayoutConstraint* layoutProperties = [(TiViewProxy *)self->_scrollingView layoutProperties];
-                                layoutProperties->bottom = TiDimensionDip(self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+ shift);
-                                [(TiViewProxy *)self->_scrollingView refreshView:nil];
-                                
-                                //NSLog ( @"  ################### keyboardvisible manualpanning self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height + shift ###################  %f ",self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+ shift);
-                            }];
-                        }
-                    }
-                    
-                    
-                    
-                    
-                    
-
-                }
-                else {
-                    if (self.manualPanning == true){
-                      if (autoAdjustBottomPadding == true && autoSizeAndKeepScrollingViewAboveToolbar == false){
-                        [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, 0, bottomInset, 0)];
-                        scrollView.scrollIndicatorInsets = scrollView.contentInset;
-                      }
-                    }
-                    else {
-
-                       // dispatch_async(dispatch_get_main_queue(), ^{
-                            CGPoint offset = CGPointMake(0, scrollView.contentOffset.y + shift);
-
-                            if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                               // offset.y = offset.y + toolbarDiff;
-                                bottomInset = bottomInset + toolbarDiff - self->bottomPadding;
-
-                            }
-                        
-                            else if (self->extendSafeArea == true && self->ignoreExtendSafeArea == false){
-                                
-                                bottomInset = bottomInset - self->bottomPadding;
-                            }
-
-                        
-                        
-                            else {
-                                if (isTabGroup == true && isNavigationWindow == false) {
-                                    bottomInset = bottomInset;
-                                }
-                                else {
-                                    if (self->ignoreExtendSafeArea == false){
-                                        bottomInset = keyboardHeight + inputViewFrame.size.height - tabgroupHeight - insetBottomCorrection - altAddPixel;
-
-                                    }
-                                    else {
-    //                                    bottomInset = keyboardHeight + inputViewFrame.size.height - tabgroupHeight - insetBottomCorrection;
-
-                                    }
-
-                                }
-
-                            }
-                        
-                        
-                        if (autoSizeAndKeepScrollingViewAboveToolbar == true){
-                            
-
-                            /*
-                            CGRect tableViewFrame = self->proxyView.frame;
-
-                            tableViewFrame.size.height = (keyboardFrameInView.origin.y - self->toolbarInputViewDiff - self->initialKeyboardTriggerOffset);
-
-
-                            
-                            self->proxyView.frame = tableViewFrame;
-                            */
-                            
-                            if (isNavigationWindow == true){
-                                LayoutConstraint* layoutProperties = [(TiViewProxy *)self->_scrollingView layoutProperties];
-                                layoutProperties->bottom = TiDimensionDip(self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+keyboardHeight-tabgroupHeight);
-                                [(TiViewProxy *)self->_scrollingView refreshView:nil];
-                            }
-                            else {
-                                LayoutConstraint* layoutProperties = [(TiViewProxy *)self->_scrollingView layoutProperties];
-                                layoutProperties->bottom = TiDimensionDip(self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+keyboardHeight-tabgroupHeight-bottomPadding);
-                                [(TiViewProxy *)self->_scrollingView refreshView:nil];
-                            }
-                            //NSLog ( @"  ################### keyboardVisible FALSE self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height + keyboardHeight ###################  %f ",self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+keyboardHeight-tabgroupHeight-bottomPadding);
-
-                            
-                            
-                        }
-                        
-                        
-                        
-                        
-                            UIEdgeInsets newInsets = UIEdgeInsetsMake(scrollView.contentInset.top, 0, bottomInset, 0);
-
-                            [UIView animateWithDuration:self->keyboardTransitionDuration delay:0.f options:(7 << 16)| UIViewAnimationOptionBeginFromCurrentState animations:^{
-
-                                [scrollView setContentOffset:offset animated:NO];
-                                if (self->autoAdjustBottomPadding == true && self->autoSizeAndKeepScrollingViewAboveToolbar == false){
-                                  [scrollView setContentInset:newInsets];
-                                  [scrollView setVerticalScrollIndicatorInsets:newInsets];
-                                }
-                                [scrollView layoutIfNeeded];
-                            } completion:^(BOOL finished) {
-                              if ([self->_scrollingView _hasListeners:@"scrollend"]) {
-                                  [self->_scrollingView fireEvent:@"scrollend" withObject:[self eventObjectForScrollView:scrollView]];
-                              }
-                            }];
-                      //  });
-                    }
-                }
-                manualKeyboardResize = false;
-                //[UIView setAnimationsEnabled:YES];
-            }
-
-            if (shift >= safeAreaValue){
-                lastShiftValue = (shift);
-            }
-            else {
-                lastShiftValue = safeAreaValue;
-            }
-            //////////NSLog ( @"+++++++++++++++++++++++++++++ SET LastShiftValue: %f",lastShiftValue);
-
-          //NSLog ( @"+++++++++++++++++++++++++++++ LastShiftValue  Shift: %f   %f",lastShiftValue,shift);
-
-        }
-        else {
-          lastShiftValue = (shift);
-
-          //NSLog ( @"+++++++++++++++++++++++++++++ ELSE LastShiftValue  Shift: %f   %f",lastShiftValue,shift);
-
-            //[UIView setAnimationsEnabled:YES];
-        }
-    }
-    else {
-        ////NSLog ( @"+++++++++++++++++++++++++++++ MANUAL KEYBOARD  %f : ",lastShiftValue);
-        [UIView performWithoutAnimation:^{
-
-          CGFloat bottomInset = 0;
-          CGFloat bottomValueScroll = 0;
-
-          if (keyboardHeight <= 0){
-
-              bottomInset = scrollView.contentInset.bottom + toolbarview.frame.size.height;
-              bottomValueScroll = toolbarview.frame.size.height + initialScrollingViewBottomValue;
-
-              bottomInset = (bottomInset);
-              bottomValueScroll = (bottomValueScroll);
-
-              ////////NSLog ( @" OFFSET D %f:",bottomInset);
-
-          }
-          else {
-              
-              ////NSLog ( @"+++++++++++++++++++++++++++++ BEFORE MANUAL KEYBOARD %f ",bottomInset);
-
-
-              if (isTabGroup == true) {
-                  
-                  if (isNavigationWindow == true){
-                      //bottomInset = keyboardHeight + inputViewFrame.size.height - insetBottomCorrection + tabgroupHeight - isNavigationWindowBottomDiff;
-
-                      bottomInset = lastShiftValue + toolbarViewFrame.size.height;
-
-                      
-                      ////NSLog ( @"+++++++++++++++++++++++++++++ MANUAL KEYBOARD %f ",bottomInset);
-
-                  }
-                  else {
-                      bottomInset = keyboardHeight + inputViewFrame.size.height - insetBottomCorrection + tabgroupHeight - (tabgroupHeight-bottomPadding) - addPixel;
-                  }
-              }
-              else {
-                  
-                  
-                  if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                      bottomInset = keyboardHeight + inputViewFrame.size.height - tabgroupHeight - insetBottomCorrection - altAddPixel;
-
-                  }
-                  else if (self->extendSafeArea == true && self->ignoreExtendSafeArea == false){
-                      bottomInset = keyboardHeight + inputViewFrame.size.height - tabgroupHeight - insetBottomCorrection - altAddPixel;
-                  }
-                  else {
-                      bottomInset = keyboardHeight + inputViewFrame.size.height - tabgroupHeight - insetBottomCorrection - altAddPixel;
-                  }
-                  
-              }
-
-              
-              
-              bottomValueScroll = keyboardHeight + toolbarview.frame.size.height + initialScrollingViewBottomValue - tabgroupHeight;
-
-              
-              /*
-              if (autoSizeAndKeepScrollingViewAboveToolbar == true && autoAdjustBottomPadding == false){
-
-                  CGRect tableViewFrame = self->proxyView.frame;
-                //    tableViewFrame.size.height = keyboardY - self->toolbarview.frame.size.height - initialKeyboardTriggerOffset;
-                    
-                    
-                    
-                    //tableViewFrame.size.height = self->inputView.frame.origin.y + self->toolbarInputViewDiff;
-
-                    tableViewFrame.size.height = (keyboardFrameInView.origin.y - self->toolbarInputViewDiff - self->initialKeyboardTriggerOffset) + self->toolbarview.frame.size.height;
-
-                    //NSLog ( @"  ################### tableViewFrame.size.height  ###################  %f ",tableViewFrame.size.height);
-
-                    
-                    self->proxyView.frame = tableViewFrame;
-
-              }
-              */
-
-              if (autoSizeAndKeepScrollingViewAboveToolbar == true && autoAdjustBottomPadding == false){
-                  
-                  /*
-                  CGRect tableViewFrame = self->proxyView.frame;
-
-                  
-                  //NSLog ( @"  ################### tableViewFrame.size.height  ###################  %f ",tableViewFrame.size.height);
-
-                  
-//                  tableViewFrame.size.height = (keyboardFrameInView.origin.y - self->toolbarInputViewDiff - self->initialKeyboardTriggerOffset) + self->toolbarview.frame.size.height;
-
-                  
-                  tableViewFrame.size.height = tableViewFrame.size.height - self->toolbarview.frame.size.height;
-
-                  
-                  //NSLog ( @"  ################### AFTER tableViewFrame.size.height  ###################  %f ",tableViewFrame.size.height);
-
-                  
-                  self->proxyView.frame = tableViewFrame;
-                    */
-                  
-                  
-                  
-                  
-                  
-                   
-                  bottomValueScroll = keyboardHeight + toolbarview.frame.size.height + initialScrollingViewBottomValue - tabgroupHeight;
-                  
-                  
-                  bottomValueScroll = bottomValueScroll - initialKeyboardTriggerOffset;
-                  
-                  //NSLog ( @"  ################### manual toolbarview.frame.origin.y  ###################  %f ",toolbarview.frame.origin.y);
-
-                  
-                  if (isNavigationWindow == true){
-                      LayoutConstraint* layoutProperties = [(TiViewProxy *)_scrollingView layoutProperties];
-                      layoutProperties->bottom = TiDimensionDip(self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+keyboardHeight-tabgroupHeight);
-                      [(TiViewProxy *)_scrollingView refreshView:nil];
-                  }
-                  else {
-                      LayoutConstraint* layoutProperties = [(TiViewProxy *)_scrollingView layoutProperties];
-                      layoutProperties->bottom = TiDimensionDip(self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+keyboardHeight-tabgroupHeight-bottomPadding);
-                      [(TiViewProxy *)_scrollingView refreshView:nil];
-                  }
-                  
-                  
-                  //NSLog ( @"  ################### manual tableViewFrame.size.height  ###################  %f ",self->initialScrollingViewBottomValue+self->toolbarview.frame.size.height+keyboardHeight-tabgroupHeight-bottomPadding);
-
-
-                  
-              }
-              bottomInset = (bottomInset);
-              bottomValueScroll = (bottomValueScroll);
-
-              ////////NSLog ( @" OFFSET E AFTER %f:",bottomInset);
-              ////////NSLog ( @" OFFSET E AFTER %f:",bottomValueScroll);
-
-          }
-
-
-          if (autoAdjustBottomPadding == true && autoSizeAndKeepScrollingViewAboveToolbar == false){
-
-              if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                  //bottomInset = bottomInset - bottomPadding;
-              }
-              ////NSLog ( @"+++++++++++++++++++++++++++++ MANUAL autoAdjustBottomPadding %f ",bottomInset);
-
-
-              [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, scrollView.contentInset.left, bottomInset, scrollView.contentInset.right)];
-
-
-              UIEdgeInsets indicatorInsets = scrollView.verticalScrollIndicatorInsets;
-
-              indicatorInsets.bottom = (bottomInset);
-
-              scrollView.verticalScrollIndicatorInsets = indicatorInsets;
-          }
-
-
-        
-          
-         
-
-
-
-          if (autoScrollToBottom == true){
-              ////NSLog ( @"+++++++++++++++++++++++++++++ MANUAL autoScrollToBottom");
-
-              CGSize svContentSize = scrollView.contentSize;
-              CGSize svBoundSize = scrollView.frame.size;
-              CGFloat svBottomInsets = scrollView.contentInset.bottom;
-
-              CGFloat bottomHeight = 0;
-
-              if (autoSizeAndKeepScrollingViewAboveToolbar == true){
-                  if (keyboardHeight <= 0){
-                      bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets;
-                  }
-                  else {
-                      bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets;
-
-                  }
-                  
-                  /*
-                  CGRect tableViewFrame = self->proxyView.frame;
-
-                  tableViewFrame.size.height = (keyboardFrameInView.origin.y - self->toolbarInputViewDiff - self->initialKeyboardTriggerOffset);
-
-                  //////NSLog ( @"  ################### tableViewFrame.size.height  ###################  %f ",tableViewFrame.size.height);
-
-                  
-                  self->proxyView.frame = tableViewFrame;
-                   */
-                  
-
-              }
-              else {
-                  if (keyboardHeight <= 0){
-                      bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + toolbarview.frame.size.height;
-                  }
-                  else {
-                      bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + tabgroupHeight;
-
-                  }
-
-              }
-
-              CGFloat bottomWidth = (svContentSize.width - svBoundSize.width);
-              bottomHeight = (bottomHeight);
-
-
-              if (self->extendSafeArea == true && self->ignoreExtendSafeArea == false){
-                  bottomHeight = bottomHeight + bottomPadding;
-              }
-
-
-              CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
-
-              scrollView.contentOffset = newOffset;
-              initialContentOffset = scrollView.contentOffset;
-
-              /*
-              if (self->keyboardwillHide == true){
-
-                  if (self->isUItableView == true){
-                      [UIView performWithoutAnimation:^{
-                          [self->table reloadRowsAtIndexPaths:[self->table  indexPathsForVisibleRows] withRowAnimation:UITableViewRowAnimationNone];
-                      }];
-                  }
-
-
-              }
-              */
-              if ([self->_scrollingView _hasListeners:@"scrollend"]) {
-                  [self->_scrollingView fireEvent:@"scrollend" withObject:[self eventObjectForScrollView:scrollView]];
-              }
-
-          }
-
-
-
-
-
-          else {
-
-              ////NSLog ( @"+++++++++++++++++++++++++++++ MANUAL autoScrollToBottom FALSE");
-
-
-              CGFloat bottomInset = 0;
-              CGFloat bottomValueScroll = 0;
-
-              if (keyboardHeight <= 0){
-
-                  bottomInset = scrollView.contentInset.bottom + toolbarview.frame.size.height;
-                  bottomValueScroll = toolbarview.frame.size.height + initialScrollingViewBottomValue;
-
-                  bottomInset = (bottomInset);
-                  bottomValueScroll = (bottomValueScroll);
-
-              }
-              else {
-
-                  bottomInset = keyboardHeight + inputViewFrame.size.height - tabgroupHeight - insetBottomCorrection;
-                  bottomValueScroll = keyboardHeight + toolbarview.frame.size.height + initialScrollingViewBottomValue - tabgroupHeight;
-
-                  bottomInset = (bottomInset);
-                  bottomValueScroll = (bottomValueScroll);
-
-              }
-
-
-
-              if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                  //bottomInset = bottomInset - bottomPadding;
-              }
-
-
-              [scrollView setContentInset:UIEdgeInsetsMake(scrollView.contentInset.top, scrollView.contentInset.left, bottomInset, scrollView.contentInset.right)];
-
-
-              UIEdgeInsets indicatorInsets = scrollView.verticalScrollIndicatorInsets;
-
-              indicatorInsets.bottom = (bottomInset);
-
-              scrollView.verticalScrollIndicatorInsets = indicatorInsets;
-
-
-
-
-              CGSize svContentSize = scrollView.contentSize;
-              CGSize svBoundSize = scrollView.frame.size;
-              CGFloat svBottomInsets = scrollView.contentInset.bottom;
-
-              CGFloat bottomHeight = 0;
-
-              if (keyboardHeight <= 0){
-                  bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + toolbarview.frame.size.height;
-              }
-              else {
-                  bottomHeight = svContentSize.height - svBoundSize.height + svBottomInsets + tabgroupHeight;
-
-              }
-              CGFloat bottomWidth = (svContentSize.width - svBoundSize.width);
-              bottomHeight = (bottomHeight);
-
-
-              if (self->extendSafeArea == true && self->ignoreExtendSafeArea == true){
-                  //bottomHeight = bottomHeight + toolbarDiff;
-              }
-
-
-              CGPoint newOffset = CGPointMake(bottomWidth, bottomHeight);
-
-              scrollView.contentOffset = newOffset;
-              initialContentOffset = scrollView.contentOffset;
-              if ([self->_scrollingView _hasListeners:@"scrollend"]) {
-                  [self->_scrollingView fireEvent:@"scrollend" withObject:[self eventObjectForScrollView:scrollView]];
-              }
-
-
-          }
-
-      }];
-
-        manualKeyboardResize = false;
-    }
-    lastKeyboardHeight = (int)(keyboardHeight);
+    lastKeyboardHeight = (int)(keyboardFrameInView.size.height - inputViewFrame.size.height);
 }
+
+
+#pragma mark - Clean Methods
+
+- (CGFloat)computeToolbarTranslation:(CGRect)inputAccessoryFrame
+{
+    // Delta approach: how far has the accessory view moved up from its hidden position?
+    CGFloat deltaY = initialAccessoryViewFrameYWhenHidden - inputAccessoryFrame.origin.y;
+
+    NSLog(@"[TiDAKBC] computeToolbarTranslation | acc={{%f,%f},{%f,%f}} delta=%f (initY=%f, curY=%f) safeArea=%.0f bottomPadding=%.0f toolbarResizeDiff=%f extendSafeArea=%d isTabGroup=%d",
+          inputAccessoryFrame.origin.x, inputAccessoryFrame.origin.y,
+          inputAccessoryFrame.size.width, inputAccessoryFrame.size.height,
+          deltaY, initialAccessoryViewFrameYWhenHidden, inputAccessoryFrame.origin.y,
+          safeAreaValue, bottomPadding, toolbarResizeDiff, extendSafeArea, isTabGroup);
+
+    // Config adjustments as flat variables (same logic as original code)
+    CGFloat translation = deltaY + bottomPadding;
+    if (isTabGroup && !isNavigationWindow) {
+        // In a TabGroup (no nav window), the toolbarView sits above the tab bar
+        // in the window's content area. The initialAccessoryViewFrameYWhenHidden
+        // is measured in screen coordinates (bottom of screen), but the toolbar
+        // actually starts tabgroupHeight pixels higher (bottom of content area).
+        // Apply the same offset as extendSafeArea:true (toolbarResizeDiff + bottomPadding)
+        // plus the tabgroupHeight offset between screen-bottom and content-area-bottom.
+        translation -= tabgroupHeight + toolbarResizeDiff + bottomPadding;
+        NSLog(@"[TiDAKBC] computeToolbarTranslation | TAB_GROUP(no nav): raw=%f -= (%f + %.0f + %.0f)", translation, tabgroupHeight, toolbarResizeDiff, bottomPadding);
+    } else if (isTabGroup && isNavigationWindow) {
+        translation += tabgroupHeight - bottomPadding - (((tabgroupHeight-bottomPadding) - bottomPadding) - bottomPadding) + isNavigationWindowBottomDiff;
+        NSLog(@"[TiDAKBC] computeToolbarTranslation | TAB_GROUP(nav): raw=%f", translation);
+    } else if (!isTabGroup) {
+        // Non-tab windows with extendSafeArea=false sit inside Titanium's safeAreaViewProxy
+        // which constrains content within the home indicator zone. iOS inputAccessoryView is NOT
+       // constrained by this — it sits above where keyboard would appear (below home indicator).
+        // So toolbarview starts ~bottomPadding lower than expected, requiring extra upward offset.
+        if (!extendSafeArea) {
+          // Extra upward offset for no-extend mode: Titanium's safeAreaViewProxy positions views lower than iOS inputAccessoryView anchor point.
+            float correction = floorf(bottomPadding * 0.8) + 1;
+            translation -= toolbarResizeDiff - (int)correction;
+        } else {
+            translation -= toolbarResizeDiff + bottomPadding;
+            NSLog(@"[TiDAKBC] computeToolbarTranslation | NON_TAB(extend): raw=%f -= (%.0f + %.0f)", translation, toolbarResizeDiff, bottomPadding);
+        }
+    }
+
+    CGFloat result = fmax(translation, safeAreaValue);
+    NSLog(@"[TiDAKBC] computeToolbarTranslation | RESULT: raw=%f -> clamped=%.4f (safeArea=%.0f)", result, result, translation, safeAreaValue);
+    return result;
+}
+
+- (void)applyToolbarTranslation:(CGFloat)translation animated:(BOOL)animated duration:(NSTimeInterval)duration curve:(NSInteger)curve
+{
+    NSLog(@"[TiDAKBC] applyToolbarTranslation | translation=%f animated=%d duration=%f curve=%ld path=%s (swiping=%d willHide=%d)",
+          translation, animated, duration, (long)curve,
+          (isSwiping || keyboardwillHide) ? "CALayer" : "UIView",
+          isSwiping, keyboardwillHide);
+
+    if (isSwiping || keyboardwillHide) {
+        // CALayer for 120Hz smoothness during swipe/hide
+        CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
+        NSLog(@"[TiDAKBC] applyToolbarTranslation | CALAYER: ty=%-10f cached=(%g,%g)", -translation, cachedSwipeTransform.ty, transform.ty);
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        toolbarview.layer.affineTransform = transform;
+        cachedSwipeTransform = transform;
+        [CATransaction commit];
+    } else if (!animated || duration <= 0) {
+        // Instant (no animation) — remove any in-flight UIView animation on transform
+        // and set directly via CALayer to avoid coalescing with the keyboard animation.
+        CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
+        NSLog(@"[TiDAKBC] applyToolbarTranslation | INSTANT: ty=%f", -translation);
+        [toolbarview.layer removeAllAnimations];
+        toolbarview.transform = transform;
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        toolbarview.layer.affineTransform = transform;
+        cachedSwipeTransform = transform;
+        [CATransaction commit];
+    } else {
+        // UIView animation for smooth keyboard-aligned transitions
+        CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
+        NSTimeInterval animDuration = _manualPanning ? 0 : duration;
+        NSLog(@"[TiDAKBC] applyToolbarTranslation | UIView: translation=%-10f duration=%.4f curve=%ld", -translation, animDuration, (long)curve);
+        [UIView animateWithDuration:animDuration
+                              delay:0
+                            options:(curve << 16) | UIViewAnimationOptionBeginFromCurrentState
+                         animations:^{
+            toolbarview.transform = transform;
+        } completion:nil];
+    }
+
+    lastShiftValue = translation;
+}
+
+- (void)applyAutoSizeBottomConstraintWithTranslation:(CGFloat)translation
+{
+    if (!autoSizeAndKeepScrollingViewAboveToolbar) return;
+    CGFloat bottomValue = initialScrollingViewBottomValue + toolbarview.frame.size.height + translation;
+    LayoutConstraint* lp = [_scrollingView layoutProperties];
+    lp->bottom = TiDimensionDip(bottomValue);
+    [_scrollingView refreshView:nil];
+    NSLog(@"[TiDAKBC] applyAutoSizeBottom | bottom=%.2f (initialBottom=%.2f + toolbarH=%.0f + translation=%.2f)", bottomValue, initialScrollingViewBottomValue, toolbarview.frame.size.height, translation);
+}
+
+- (void)applyScrollViewInset:(CGRect)inputAccessoryFrame
+{
+    CGFloat translation = [self computeToolbarTranslation:inputAccessoryFrame];
+    CGRect toolbarFrame = toolbarview.frame;
+    CGFloat bottomInset = translation + toolbarFrame.size.height;
+
+    // Config adjustments for inset
+    if (autoSizeAndKeepScrollingViewAboveToolbar) {
+        // autoSize mode manages layout via bottom constraint, not contentInset
+        NSLog(@"[TiDAKBC] applyScrollViewInset | SKIPPED (autoSize mode, managing via constraints)");
+        return;
+    } else if (extendSafeArea) {
+        // translation already has bottomPadding subtracted in computeToolbarTranslation,
+        // so translation + toolbarHeight double-subtracts it. Cancel the double-subtraction.
+        // For ignoreExtendSafeArea=true: also keep inset responsive to toolbar resize.
+        bottomInset -= bottomPadding;
+    }
+
+    CGFloat oldBottom = nativeScrollView.contentInset.bottom;
+    NSLog(@"[TiDAKBC] applyScrollViewInset | REASON=inset-update accFrame={{%f,%f},{%f,%f}} translation=%f toolbarH=%f keyboardVis=%d hasSettled=%d manualResize=%d extendSafeArea=%d ignoreExtend=%d oldBottom=%.0f newBottom=%.0f delta=%.0f",
+          inputAccessoryFrame.origin.x, inputAccessoryFrame.origin.y,
+          inputAccessoryFrame.size.width, inputAccessoryFrame.size.height,
+          translation, toolbarFrame.size.height,
+          keyboardVisible, hasSettledShift, manualKeyboardResize, extendSafeArea, ignoreExtendSafeArea,
+          oldBottom, bottomInset, bottomInset - oldBottom);
+
+    UIEdgeInsets newInsets = UIEdgeInsetsMake(
+        nativeScrollView.contentInset.top, 0, bottomInset, 0
+    );
+    [nativeScrollView setContentInset:newInsets];
+    nativeScrollView.scrollIndicatorInsets = newInsets;
+
+    NSLog(@"[TiDAKBC] applyScrollViewInset | APPLIED contentInset={{%.0f,%.0f,%.0f,%.0f}}",
+          nativeScrollView.contentInset.top, nativeScrollView.contentInset.left,
+          nativeScrollView.contentInset.bottom, nativeScrollView.contentInset.right);
+}
+
+- (void)scrollToBottomIfNeeded
+{
+    if (!autoScrollToBottom || !_scrollingView || !nativeScrollView) {
+        NSLog(@"[TiDAKBC] scrollToBottom | SKIPPED: autoScrollToBottom=%d, _scrollingView=%p, nativeScrollView=%p",
+              autoScrollToBottom, _scrollingView, nativeScrollView);
+        return;
+    }
+
+    UIScrollView *sv = nativeScrollView;
+    if (sv.contentSize.height <= sv.frame.size.height) {
+        NSLog(@"[TiDAKBC] scrollToBottom | SKIPPED: contentSizeH=%.0f <= boundsH=%.0f",
+              sv.contentSize.height, sv.frame.size.height);
+        return;
+    }
+
+    CGFloat bottomHeight = sv.contentSize.height - sv.frame.size.height + sv.contentInset.bottom + sv.safeAreaInsets.bottom;
+
+    NSLog(@"[TiDAKBC] scrollToBottom | context: contentSize={%.0f,%.0f}, boundsSize={%.0f,%.0f}, offsetBefore={{%f,%f}}, contentInset={%.0f,%.0f,%.0f,%.0f}, tabgroupHeight=%.0f, bottomHeight=%.0f",
+          sv.contentSize.width, sv.contentSize.height,
+          sv.frame.size.width, sv.frame.size.height,
+          sv.contentOffset.x, sv.contentOffset.y,
+          sv.contentInset.top, sv.contentInset.left, sv.contentInset.bottom, sv.contentInset.right,
+          tabgroupHeight, bottomHeight);
+
+    // Adjust for autoSizeAndKeepScrollingViewAboveToolbar
+    // In autoSize mode, contentInset.bottom is not updated (applyScrollViewInset returns early),
+    // so use the toolbar translation + toolbar height for the scroll target.
+    if (autoSizeAndKeepScrollingViewAboveToolbar) {
+        // Use current translation (from settledShift or 0 if keyboard hidden)
+        CGFloat autoSizeTrans = settledShift > 0 ? settledShift : 0;
+        bottomHeight = sv.contentSize.height - sv.frame.size.height + autoSizeTrans + toolbarview.frame.size.height + sv.safeAreaInsets.bottom;
+        [self applyAutoSizeBottomConstraintWithTranslation:autoSizeTrans];
+    }
+
+    CGPoint newOffset = CGPointMake(0, bottomHeight);
+    if (fabs(sv.contentOffset.y - bottomHeight) > 1.0) {
+        NSLog(@"[TiDAKBC] scrollToBottom | APPLIED offset {{%f,%f}} -> {{%f,%.0f}}", sv.contentOffset.x, sv.contentOffset.y, newOffset.x, newOffset.y);
+        sv.contentOffset = newOffset;
+    } else {
+        NSLog(@"[TiDAKBC] scrollToBottom | SKIPPED (already at %.0f, target=%.0f, diff=%.2f)", sv.contentOffset.y, bottomHeight, fabs(sv.contentOffset.y - bottomHeight));
+    }
+}
+
+- (void)handleToolbarBoundsChangeToHeight:(CGFloat)newHeight
+{
+    CGFloat oldHeight = toolbarview.frame.size.height;
+    CGFloat delta = newHeight - oldHeight;
+    manualKeyboardResize = true;
+    toolbarResizeDiff = (oldHeight - initialKeyboardTriggerOffset);
+
+    NSLog(@"[TiDAKBC] handleToolbarBoundsChangeToHeight | OLD_H=%f NEW_H=%f DELTA=%f initialKeyboardTriggerOffset=%f toolbarResizeDiff=%f",
+          oldHeight, newHeight, delta, initialKeyboardTriggerOffset, toolbarResizeDiff);
+
+    // Reset CALayer swipe transform on real resize
+    if (!CGAffineTransformEqualToTransform(cachedSwipeTransform, CGAffineTransformIdentity)) {
+        NSLog(@"[TiDAKBC] handleToolbarBoundsChangeToHeight | resetting CALayer swipe transform (ty=%f)", cachedSwipeTransform.ty);
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        toolbarview.layer.affineTransform = CGAffineTransformIdentity;
+        cachedSwipeTransform = CGAffineTransformIdentity;
+        [CATransaction commit];
+    }
+
+    // Update swipe baseline to new toolbar frame.
+    // NOTE: Do NOT set initialAccessoryViewFrame here — iOS may still be animating the accessory view position.
+    // Using a stale frame.y would cause settle baseline (which runs on first KVO after didHide) or
+    // subsequent calculations to use wrong values, breaking swipe positioning.
+    // Instead we only update height tracking; KVO TOOLBAR RESIZE DETECTED handles initialAccessoryViewFrame
+    // and settledShift once iOS finishes animating the new position.
+    lastInputViewFrameHeight = newHeight;
+
+   // Update input view frame to match toolbar size (needed for accessory positioning)
+    inputViewFrame.size.height = newHeight;
+    inputView.frame = inputViewFrame;
+
+    // Update autoSize bottom constraint for new toolbar height
+    if (keyboardVisible && !CGRectIsEmpty(lastInputAccessoryViewFrame)) {
+        CGFloat trans = [self computeToolbarTranslation:lastInputAccessoryViewFrame];
+        [self applyAutoSizeBottomConstraintWithTranslation:trans];
+    } else {
+        [self applyAutoSizeBottomConstraintWithTranslation:0];
+    }
+
+    NSLog(@"[TiDAKBC] handleToolbarBoundsChangeToHeight | DONE — inputView frame={{%f,%f},{%f,%f}}",
+          inputView.frame.origin.x, inputView.frame.origin.y, inputView.frame.size.width, inputView.frame.size.height);
+}
+
+
 
 
 
 - (void)initPaddings
 {
     if ([_scrollingView viewReady]) {
-        ////////NSLog ( @" initPaddings inputView doConfig " );
+        NSLog(@"[TiDAKBC] initPaddings | viewReady=YES, calling inputView doConfig");
         manualKeyboardResize = true;
 
         [inputView doConfig];
+        NSLog(@"[TiDAKBC] initPaddings | DONE — inputView doConfig called");
     }
     else {
-        //////////////NSLog ( @" initPaddings delayed " );
+        NSLog(@"[TiDAKBC] initPaddings | viewReady=NO, retrying in 0.16s (_scrollingView=%p)", _scrollingView);
 
         [self performSelector:@selector(initPaddings) withObject:self afterDelay:0.16f];
     }
@@ -1995,6 +1859,96 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 {
     ENSURE_UI_THREAD(setAutoScrollToBottom, args);
     autoScrollToBottom = [TiUtils boolValue:args def:NO];
+}
+
+- (void)setShowKeyboardOnScrollUp:(id)args
+{
+    ENSURE_UI_THREAD(setShowKeyboardOnScrollUp, args);
+    showKeyboardOnScrollUp = [TiUtils boolValue:args def:NO];
+
+    if (nativeScrollView) {
+        if (showKeyboardOnScrollUp) {
+            [self installScrollDelegateProxy];
+        } else {
+            [self uninstallScrollDelegateProxy];
+        }
+    }
+}
+
+- (void)installScrollDelegateProxy
+{
+    if (!nativeScrollView || !showKeyboardOnScrollUp) return;
+
+    id<UIScrollViewDelegate> existingDelegate = nativeScrollView.delegate;
+
+    // Don't reinstall if already installed
+    if ([existingDelegate isKindOfClass:[TiKeyboardControlScrollDelegateProxy class]]) {
+        return;
+    }
+
+    scrollDelegateProxy = [[TiKeyboardControlScrollDelegateProxy alloc] init];
+    scrollDelegateProxy.originalDelegate = existingDelegate;
+    scrollDelegateProxy.keyboardControlProxy = self;
+    nativeScrollView.delegate = scrollDelegateProxy;
+
+    NSLog(@"[TiDAKBC] installScrollDelegateProxy | installed, originalDelegate=%@", existingDelegate);
+}
+
+- (void)uninstallScrollDelegateProxy
+{
+    if (!nativeScrollView) return;
+
+    if ([nativeScrollView.delegate isKindOfClass:[TiKeyboardControlScrollDelegateProxy class]]) {
+        TiKeyboardControlScrollDelegateProxy *proxy = (TiKeyboardControlScrollDelegateProxy *)nativeScrollView.delegate;
+        nativeScrollView.delegate = proxy.originalDelegate;
+    }
+    scrollDelegateProxy = nil;
+
+    NSLog(@"[TiDAKBC] uninstallScrollDelegateProxy | restored original delegate");
+}
+
+- (void)handleScrollViewWillBeginDragging:(UIScrollView *)scrollView
+{
+    isDraggingScroll = YES;
+    showKeyboardOnScrollUpTriggered = NO;
+}
+
+- (void)handleScrollViewDidScroll:(UIScrollView *)scrollView
+{
+    if (!showKeyboardOnScrollUp) return;
+    if (!isDraggingScroll) return;
+    if (showKeyboardOnScrollUpTriggered) return;
+    if (keyboardVisible) return;
+    if (keyboardwillHide) return;
+
+    CGFloat contentHeight = scrollView.contentSize.height;
+    CGFloat visibleHeight = scrollView.frame.size.height;
+    CGFloat contentInsetBottom = scrollView.contentInset.bottom;
+    CGFloat currentOffsetY = scrollView.contentOffset.y;
+
+    // Maximum normal scroll position (bottom of content)
+    CGFloat bottomOffset = contentHeight - visibleHeight + contentInsetBottom;
+
+    // Trigger when scrolled to bottom (with 20pt threshold for bounce detection)
+    CGFloat atBottomThreshold = 20.0;
+    BOOL isAtOrPastBottom = (currentOffsetY >= bottomOffset - atBottomThreshold);
+
+    if (isAtOrPastBottom && contentHeight > visibleHeight) {
+        showKeyboardOnScrollUpTriggered = YES;
+
+        if (textview != nil && ![textview isFirstResponder]) {
+            NSLog(@"[TiDAKBC] showKeyboardOnScrollUp | becomeFirstResponder on textview at offsetY=%.0f", currentOffsetY);
+            [textview becomeFirstResponder];
+        } else if (textField != nil && ![textField isFirstResponder]) {
+            NSLog(@"[TiDAKBC] showKeyboardOnScrollUp | becomeFirstResponder on textField at offsetY=%.0f", currentOffsetY);
+            [textField becomeFirstResponder];
+        }
+    }
+}
+
+- (void)handleScrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate
+{
+    isDraggingScroll = NO;
 }
 
 

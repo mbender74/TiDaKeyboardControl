@@ -32,6 +32,13 @@
 #import "TiUITableView.h"
 
 
+@class TiKeyboardControlViewProxy;
+
+@interface TiKeyboardControlScrollDelegateProxy : NSObject <UIScrollViewDelegate>
+@property (nonatomic, weak) id<UIScrollViewDelegate> originalDelegate;
+@property (nonatomic, weak) TiKeyboardControlViewProxy *keyboardControlProxy;
+@end
+
 @interface TiKeyboardControlView: TiUIView <UIGestureRecognizerDelegate> {
 }
 @property (nonatomic, strong) UIPanGestureRecognizer *keyboardPanRecognizer;
@@ -50,6 +57,7 @@
     BOOL keyboardVisible;
     BOOL keyboardwillHide;
     BOOL keyboardwillShow;
+    BOOL keyboardShowing; // YES during keyboardWillShow through keyboardDidShow
 
     BOOL keyboardVisibleInit;
     BOOL altAddPixelSet;
@@ -95,7 +103,14 @@
     CGFloat windowHeight;
     CGFloat safeAreaValue;
     BOOL keyboardPanningOn;
-    UIViewAnimationCurve *animationCurve;
+    NSInteger animationCurve; // stored as value, not pointer (default: 7 = EaseInOut)
+    BOOL isSwiping; // YES when KVO callback is active during swipe
+    CGRect initialAccessoryViewFrame; // baseline after keyboardDidShow
+    CGFloat initialAccessoryViewFrameYWhenHidden; // accessory view y when keyboard is hidden
+    CGFloat lastAccessoryViewHeight; // previous KVO callback height (for resize detection)
+    CGAffineTransform cachedSwipeTransform; // for delta skip
+    CGFloat settledShift; // shift at last keyboardDidShow (for absolute transform calc)
+    BOOL hasSettledShift; // YES once settledShift is valid
     CGFloat tabgroupHeight;
     TiWindowProxy *parentController;
     TiKeyboardControlView *keyboardControlView;
@@ -108,6 +123,9 @@
     BOOL autoScrollToBottom;
     BOOL tinavcontroller;
     BOOL autoScrollToBottomDone;
+    BOOL autoScrollToBottomDoneAfterShow; // tracks if we already scrolled after this keyboard show cycle
+    BOOL keyboardInsetSettled; // YES after first KVO callback post-keyboard-show; prevents inset drift during animation
+    BOOL springSettledJustHappened; // YES after spring-settled; prevents keyboardWillShow from re-applying
     BOOL extendSafeArea;
     BOOL ignoreExtendSafeArea;
     TiUIView * proxyView;
@@ -115,6 +133,11 @@
     CGFloat topPadding;
     CGFloat bottomPadding;
     BOOL autoSizeAndKeepScrollingViewAboveToolbar;
+    UIEdgeInsets initialContentInset;
+    BOOL showKeyboardOnScrollUp;
+    BOOL showKeyboardOnScrollUpTriggered;
+    BOOL isDraggingScroll;
+    TiKeyboardControlScrollDelegateProxy *scrollDelegateProxy;
 }
 
 @property(nonatomic, strong, readwrite) TiViewProxy *textfield;
@@ -129,5 +152,20 @@
 - (void)setKeyboardPanning:(id)args;
 - (TiKeyboardControlView *)getTiKeyboardControlView;
 - (void)putTiKeyboardControlView:(TiKeyboardControlView *)view;
+
+/* Internal helpers */
+- (BOOL)isOwnFirstResponder;
+- (CGFloat)computeToolbarTranslation:(CGRect)inputAccessoryFrame;
+- (void)applyToolbarTranslation:(CGFloat)translation animated:(BOOL)animated duration:(NSTimeInterval)duration curve:(NSInteger)curve;
+- (void)applyScrollViewInset:(CGRect)inputAccessoryFrame;
+- (void)scrollToBottomIfNeeded;
+- (void)handleToolbarBoundsChangeToHeight:(CGFloat)newHeight;
+- (void)applyAutoSizeBottomConstraintWithTranslation:(CGFloat)translation;
+- (void)setShowKeyboardOnScrollUp:(id)args;
+- (void)installScrollDelegateProxy;
+- (void)uninstallScrollDelegateProxy;
+- (void)handleScrollViewWillBeginDragging:(UIScrollView *)scrollView;
+- (void)handleScrollViewDidScroll:(UIScrollView *)scrollView;
+- (void)handleScrollViewDidEndDragging:(UIScrollView *)scrollView willDecelerate:(BOOL)decelerate;
 
 @end
