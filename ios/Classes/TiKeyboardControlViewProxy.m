@@ -583,7 +583,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     
     if (autoSizeAndKeepScrollingViewAboveToolbar == true){
         autoAdjustBottomPadding = false;
-        
+
         //[proxyView.bottomAnchor constraintEqualToAnchor:toolbarview.topAnchor].active = YES;
 
     }
@@ -1560,6 +1560,24 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
           deltaY, initialAccessoryViewFrameYWhenHidden, inputAccessoryFrame.origin.y,
           safeAreaValue, bottomPadding, toolbarResizeDiff, extendSafeArea, isTabGroup);
 
+    // Dynamically re-evaluate tabBarHidden when computing translation.
+    // The tabBar may have been hidden/shown after setupKeyboardPanning: ran
+    // (e.g. user switched from a tab with visible tabBar to one with tabBarHidden:true).
+    if (isTabGroup && _parentWindow) {
+        id tabgroup = [_parentWindow performSelector:@selector(tabGroup)];
+        if (tabgroup != nil) {
+            UITabBar *tabBar = [[tabgroup view] performSelector:@selector(tabbar)];
+            if (tabBar && tabBar.isHidden) {
+                tabgroupHeight = 0;
+            } else {
+                tabgroupHeight = [self calculateTabBarHeight];
+                if (isNavigationWindow) {
+                    tabgroupHeight += bottomPadding;
+                }
+            }
+        }
+    }
+
     // Config adjustments as flat variables (same logic as original code)
     CGFloat translation = deltaY + bottomPadding;
     if (isTabGroup && !isNavigationWindow) {
@@ -1570,6 +1588,12 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         // Apply the same offset as extendSafeArea:true (toolbarResizeDiff + bottomPadding)
         // plus the tabgroupHeight offset between screen-bottom and content-area-bottom.
         translation -= tabgroupHeight + toolbarResizeDiff + bottomPadding;
+        // When tabBar is hidden, the toolbar sits within the safe-area and Titanium's
+        // layout system applies an extra bottomPadding shift. Compensate by reducing
+        // translation so the toolbar lands at keyboard top for both layout modes.
+        if (tabgroupHeight == 0) {
+            translation -= bottomPadding;
+        }
         NSLog(@"[TiDAKBC] computeToolbarTranslation | TAB_GROUP(no nav): raw=%f -= (%f + %.0f + %.0f)", translation, tabgroupHeight, toolbarResizeDiff, bottomPadding);
     } else if (isTabGroup && isNavigationWindow) {
         translation += tabgroupHeight - bottomPadding - (((tabgroupHeight-bottomPadding) - bottomPadding) - bottomPadding) + isNavigationWindowBottomDiff;
