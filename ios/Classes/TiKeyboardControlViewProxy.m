@@ -24,6 +24,7 @@
 #endif
 
 #import "TiKeyboardControlViewProxy.h"
+#import "TiKeyboardControlViewProxy+Metrics.h"
 #import "DeMarcbenderKeyboardcontrolModule.h"
 #import "TiUITabGroupProxy.h"
 #import "TiUITabGroup.h"
@@ -117,6 +118,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         altAddPixelSet = false;
         addPixelSet = false;
         autoSizeAndKeepScrollingViewAboveToolbar = false;
+        cachedKeyWindow = nil;
+        cachedStatusBarHeight = 0.0;
+        cachedNavigationBarHeight = 0.0;
     }
 
     return self;
@@ -296,16 +300,37 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     keyboardwillHide = false;
     keyboardInsetSettled = NO;
     initalToolbarViewFrame = CGRectZero;
-    windowRect = self.view.window.frame;
+    
+    // iOS 13+ Multi-Scene: resolveKeyWindow statt self.view.window
+    UIWindow *resolvedWindow = [self resolveKeyWindow];
+    if (resolvedWindow) {
+        windowRect = resolvedWindow.frame;
+        cachedKeyWindow = resolvedWindow;
+    } else {
+        windowRect = self.view.window.frame;
+    }
     windowHeight = windowRect.size.height;
     isTabGroup = false;
     isNavigationWindow = false;
     self.alreadyAnimating = false;
     self.manualPanning = false;
-    UIWindow *window = UIApplication.sharedApplication.windows.firstObject;
-    topPadding = window.safeAreaInsets.top;
-    bottomPadding = window.safeAreaInsets.bottom;
+    // Safe Area aus dem resolved Key Window lesen (konsistent mit windowRect)
+    UIWindow *safeWindow = cachedKeyWindow ? cachedKeyWindow : [UIApplication sharedApplication].windows.firstObject;
+    if (@available(iOS 11.0, *)) {
+        topPadding = safeWindow.safeAreaInsets.top;
+        bottomPadding = safeWindow.safeAreaInsets.bottom;
+    } else {
+        topPadding = 0;
+        bottomPadding = 0;
+    }
     safeAreaValue = bottomPadding;
+
+    // Status Bar und Navigation Bar Heights berechnen und cachen
+    self->_cachedStatusBarHeight = [self getStatusBarHeight];
+    self->_cachedNavigationBarHeight = [self calculateNavigationBarHeight];
+
+    // Orientation Observer registrieren — bei Rotation werden alle Heights neu berechnet
+    [self setupOrientationObserver];
 
 
 
@@ -384,13 +409,13 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         if (ignoreExtendSafeArea == true){
             safeAreaValue = 0;
             //tabgroupHeight = bottomPadding;
-            tabgroupHeight = (tabBar.frame.size.height);
+            tabgroupHeight = [self calculateTabBarHeight];
             //////NSLog ( @" tabBar.frame.size.height %f ",tabBar.frame.size.height);
             extendSafeArea = false;
         }
         else {
             safeAreaValue = 0;
-            tabgroupHeight = (tabBar.frame.size.height);
+            tabgroupHeight = [self calculateTabBarHeight];
             //////NSLog ( @" tabBar.frame.size.height %f ",tabBar.frame.size.height);
             extendSafeArea = false;
         }
@@ -428,7 +453,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 //initialKeyboardTriggerOffset = initalToolbarViewFrame.size.height;
                 //initialKeyboardTriggerOffset = initialKeyboardTriggerOffset + bottomPadding;
                 safeAreaValue = 0;
-                tabgroupHeight = (tabBar.frame.size.height);
+                tabgroupHeight = [self calculateTabBarHeight];
                 
                 //////NSLog ( @" tabBar.frame.size.height %f ",tabBar.frame.size.height);
 
@@ -1967,6 +1992,46 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 }
 
 
+
+#pragma mark - JavaScript-Exposed Height Queries
+
+- (void)getHeights:(id)args
+{
+    CGFloat statusBarH = [self getStatusBarHeight];
+    CGFloat navBarH = [self calculateNavigationBarHeight];
+    CGFloat tabBarH = [self calculateTabBarHeight];
+    CGFloat safeAreaTop = 0.0, safeAreaBottom = 0.0;
+    if (@available(iOS 11.0, *)) {
+        UIWindow *kw = [self resolveKeyWindow];
+        if (kw) { safeAreaTop = kw.safeAreaInsets.top; safeAreaBottom = kw.safeAreaInsets.bottom; }
+    }
+    NSDictionary *heights = @{
+        @"statusBarHeight": @(statusBarH),
+        @"navigationBarHeight": @(navBarH),
+        @"tabBarHeight": @(tabBarH),
+        @"safeAreaTop": @(safeAreaTop),
+        @"safeAreaBottom": @(safeAreaBottom)
+    };
+    [self fireEvent:@"heightResult" withObject:@{@"result": heights}];
+}
+
+- (void)getStatusBarHeight:(id)args
+{
+    CGFloat height = [self getStatusBarHeight];
+    [self fireEvent:@"heightResult" withObject:@{@"result": @(height)}];
+}
+
+- (void)getNavigationBarHeight:(id)args
+{
+    CGFloat height = [self calculateNavigationBarHeight];
+    [self fireEvent:@"heightResult" withObject:@{@"result": @(height)}];
+}
+
+- (void)getTabBarHeight:(id)args
+{
+    CGFloat height = [self calculateTabBarHeight];
+    [self fireEvent:@"heightResult" withObject:@{@"result": @(height)}];
+}
 @end
 
 

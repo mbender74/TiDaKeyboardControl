@@ -138,6 +138,9 @@
     BOOL showKeyboardOnScrollUpTriggered;
     BOOL isDraggingScroll;
     TiKeyboardControlScrollDelegateProxy *scrollDelegateProxy;
+    UIWindow *cachedKeyWindow;
+    CGFloat cachedStatusBarHeight;
+    CGFloat cachedNavigationBarHeight;
 }
 
 @property(nonatomic, strong, readwrite) TiViewProxy *textfield;
@@ -149,7 +152,25 @@
 @property(nonatomic, strong, readwrite) TiViewProxy *parentWindow;
 @property (weak, nonatomic) NSLayoutConstraint *toolbarContainerVerticalSpacingConstraint;
 
+/* iOS 13+ Multi-Scene Key Window Resolution — ivars (delegiert an TiKeyboardControlViewProxy+Metrics) */
+@property (nonatomic, weak) UIWindow *cachedKeyWindow;
+@property (nonatomic, assign) CGFloat cachedStatusBarHeight;
+@property (nonatomic, assign) CGFloat cachedNavigationBarHeight;
+
+/* Helper-Methoden (implementiert in TiKeyboardControlViewProxy+Metrics) */
+- (UIWindow *)resolveKeyWindow;
+- (CGFloat)calculateTabBarHeight;
+- (CGFloat)getStatusBarHeight;
+- (CGFloat)calculateNavigationBarHeight;
+
 - (void)setKeyboardPanning:(id)args;
+
+/* JavaScript-exposed height queries */
+- (void)getHeights:(id)args;
+- (void)getStatusBarHeight:(id)args;
+- (void)getNavigationBarHeight:(id)args;
+- (void)getTabBarHeight:(id)args;
+
 - (TiKeyboardControlView *)getTiKeyboardControlView;
 - (void)putTiKeyboardControlView:(TiKeyboardControlView *)view;
 
