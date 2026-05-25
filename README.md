@@ -227,11 +227,12 @@ The module automatically detects the window hierarchy:
 | Context | Detected as | Behavior |
 |---|---|---|
 | Standalone window | Neither TabGroup nor NavigationWindow | Standard safe area handling |
-| Inside TabGroup | `isTabGroup = true` | Toolbar position accounts for tab bar height |
+| Inside TabGroup | `isTabGroup = true` | Toolbar position accounts for tab bar height. `tabBarHidden` is re-evaluated dynamically when the keyboard appears, so switching between tabs with different visibility states works correctly. |
 | Inside NavigationWindow | `isNavigationWindow = true` | Adjusts for navigation bar and safe area offsets |
+| NavigationWindow + TabGroup | Both flags true | Mode-aware translation: `autoSizeAndKeepScrollingViewAboveToolbar` subtracts `bottomPadding` from the tab bar height to avoid double-counting the safe area, while `autoAdjustBottomPadding` uses the full tab bar height because `contentInset` handles the safe area offset differently. |
 
 The detected context affects:
-- Toolbar translation calculation (TabGroup windows have a tab bar offset)
+- Toolbar translation calculation (TabGroup windows have a tab bar offset; NavWindow+TabGroup uses mode-aware offsets)
 - Safe area handling (NavigationWindow manages safe area differently)
 - Content inset corrections
 
