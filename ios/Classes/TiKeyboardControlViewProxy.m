@@ -1571,9 +1571,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 tabgroupHeight = 0;
             } else {
                 tabgroupHeight = [self calculateTabBarHeight];
-                if (isNavigationWindow) {
-                    tabgroupHeight += bottomPadding;
-                }
             }
         }
     }
@@ -1596,8 +1593,22 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         }
         NSLog(@"[TiDAKBC] computeToolbarTranslation | TAB_GROUP(no nav): raw=%f -= (%f + %.0f + %.0f)", translation, tabgroupHeight, toolbarResizeDiff, bottomPadding);
     } else if (isTabGroup && isNavigationWindow) {
-        translation += tabgroupHeight - bottomPadding - (((tabgroupHeight-bottomPadding) - bottomPadding) - bottomPadding) + isNavigationWindowBottomDiff;
-        NSLog(@"[TiDAKBC] computeToolbarTranslation | TAB_GROUP(nav): raw=%f", translation);
+        if (autoSizeAndKeepScrollingViewAboveToolbar) {
+            // autoSize mode: tabgroupHeight includes bottomPadding, but in NavWindow+TabGroup
+            // the toolbar sits within the content area which already respects safeArea.
+            // Subtract bottomPadding from tabgroupHeight to avoid double-counting.
+            CGFloat effectiveTabgroupHeight = (tabgroupHeight > 0) ? (tabgroupHeight - bottomPadding) : 0;
+            translation -= effectiveTabgroupHeight + toolbarResizeDiff + bottomPadding;
+            NSLog(@"[TiDAKBC] computeToolbarTranslation | TAB_GROUP(nav autoSize): raw=%f -= (%.0f + %.0f + %.0f)", translation, effectiveTabgroupHeight, toolbarResizeDiff, bottomPadding);
+        } else {
+            // autoAdjustBottomPadding mode: use full tabgroupHeight because the
+            // contentInset approach handles the safe-area offset differently.
+            translation -= tabgroupHeight + toolbarResizeDiff + bottomPadding;
+            NSLog(@"[TiDAKBC] computeToolbarTranslation | TAB_GROUP(nav inset): raw=%f -= (%.0f + %.0f + %.0f)", translation, tabgroupHeight, toolbarResizeDiff, bottomPadding);
+        }
+        if (tabgroupHeight == 0) {
+            translation -= bottomPadding;
+        }
     } else if (!isTabGroup) {
         // Non-tab windows with extendSafeArea=false sit inside Titanium's safeAreaViewProxy
         // which constrains content within the home indicator zone. iOS inputAccessoryView is NOT
