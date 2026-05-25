@@ -405,17 +405,24 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
         UITabBar * tabBar = [[[_parentWindow performSelector:@selector(tabGroup)] view] performSelector:@selector(tabbar)];
         
+
+        // tabBarHidden prüfen — wenn Tab Bar versteckt, ist tabgroupHeight = 0
+        BOOL tabBarHidden = tabBar && tabBar.isHidden;
+        if (tabBarHidden) {
+            tabgroupHeight = 0;
+        }
+
         
         if (ignoreExtendSafeArea == true){
             safeAreaValue = 0;
             //tabgroupHeight = bottomPadding;
-            tabgroupHeight = [self calculateTabBarHeight];
+            if (!tabBarHidden) { tabgroupHeight = [self calculateTabBarHeight]; }
             //////NSLog ( @" tabBar.frame.size.height %f ",tabBar.frame.size.height);
             extendSafeArea = false;
         }
         else {
             safeAreaValue = 0;
-            tabgroupHeight = [self calculateTabBarHeight];
+            if (!tabBarHidden) { tabgroupHeight = [self calculateTabBarHeight]; }
             //////NSLog ( @" tabBar.frame.size.height %f ",tabBar.frame.size.height);
             extendSafeArea = false;
         }
@@ -453,7 +460,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 //initialKeyboardTriggerOffset = initalToolbarViewFrame.size.height;
                 //initialKeyboardTriggerOffset = initialKeyboardTriggerOffset + bottomPadding;
                 safeAreaValue = 0;
-                tabgroupHeight = [self calculateTabBarHeight];
+                if (!tabBarHidden) { tabgroupHeight = [self calculateTabBarHeight]; }
                 
                 //////NSLog ( @" tabBar.frame.size.height %f ",tabBar.frame.size.height);
 
