@@ -22,6 +22,8 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		2C1F67332FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.m in Sources */ = {isa = PBXBuildFile; fileRef = 2C1F67322FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.m */; };
+		2C1F67342FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.h in Headers */ = {isa = PBXBuildFile; fileRef = 2C1F67312FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.h */; };
 		2CEFF9C82FB6EC9B00731D67 /* BABFrameObservingInputAccessoryView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2CEFF9C12FB6EC9B00731D67 /* BABFrameObservingInputAccessoryView.m */; };
 		2CEFF9C92FB6EC9B00731D67 /* DeMarcbenderKeyboardcontrolModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 2CEFF9C32FB6EC9B00731D67 /* DeMarcbenderKeyboardcontrolModule.m */; };
 		2CEFF9CA2FB6EC9B00731D67 /* TiKeyboardControlViewProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = 2CEFF9C72FB6EC9B00731D67 /* TiKeyboardControlViewProxy.m */; };
@@ -47,6 +49,8 @@
 
 /* Begin PBXFileReference section */
 		24DD6D1B1134B66800162E58 /* titanium.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = titanium.xcconfig; sourceTree = "<group>"; };
+		2C1F67312FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "TiKeyboardControlViewProxy+Metrics.h"; path = "Classes/TiKeyboardControlViewProxy+Metrics.h"; sourceTree = "<group>"; };
+		2C1F67322FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = "TiKeyboardControlViewProxy+Metrics.m"; path = "Classes/TiKeyboardControlViewProxy+Metrics.m"; sourceTree = "<group>"; };
 		2CEFF9C02FB6EC9B00731D67 /* BABFrameObservingInputAccessoryView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BABFrameObservingInputAccessoryView.h; path = Classes/BABFrameObservingInputAccessoryView.h; sourceTree = "<group>"; };
 		2CEFF9C12FB6EC9B00731D67 /* BABFrameObservingInputAccessoryView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = BABFrameObservingInputAccessoryView.m; path = Classes/BABFrameObservingInputAccessoryView.m; sourceTree = "<group>"; };
 		2CEFF9C22FB6EC9B00731D67 /* DeMarcbenderKeyboardcontrolModule.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = DeMarcbenderKeyboardcontrolModule.h; path = Classes/DeMarcbenderKeyboardcontrolModule.h; sourceTree = "<group>"; };
@@ -113,6 +117,8 @@
 				2CEFF9C52FB6EC9B00731D67 /* DeMarcbenderKeyboardcontrolModuleAssets.m */,
 				2CEFF9C62FB6EC9B00731D67 /* TiKeyboardControlViewProxy.h */,
 				2CEFF9C72FB6EC9B00731D67 /* TiKeyboardControlViewProxy.m */,
+				2C1F67312FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.h */,
+				2C1F67322FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.m */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -133,6 +139,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2C1F67342FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.h in Headers */,
 				AA747D9F0F9514B9006C5449 /* DeMarcbenderKeyboardcontrol_Prefix.pch in Headers */,
 				2CEFF9CC2FB6EC9B00731D67 /* BABFrameObservingInputAccessoryView.h in Headers */,
 				2CEFF9CD2FB6EC9B00731D67 /* TiKeyboardControlViewProxy.h in Headers */,
@@ -213,6 +220,7 @@
 				2CEFF9C92FB6EC9B00731D67 /* DeMarcbenderKeyboardcontrolModule.m in Sources */,
 				2CEFF9CA2FB6EC9B00731D67 /* TiKeyboardControlViewProxy.m in Sources */,
 				2CEFF9CB2FB6EC9B00731D67 /* DeMarcbenderKeyboardcontrolModuleAssets.m in Sources */,
+				2C1F67332FC4550F00D8A743 /* TiKeyboardControlViewProxy+Metrics.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
