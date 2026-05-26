@@ -1,0 +1,24 @@
+{
+  "name": "@jademind/pi-visual",
+  "version": "0.1.1",
+  "description": "Advanced visualization extension for Pi sessions with rich markdown, Mermaid, and chart rendering.",
+  "keywords": ["pi-package", "pi", "pi-coding-agent", "visual", "mermaid", "markdown"],
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "extensions",
+    "prompts",
+    "README.md",
+    "LICENSE"
+  ],
+  "pi": {
+    "extensions": ["./extensions/index.ts"],
+    "prompts": ["./prompts"]
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "@mariozechner/pi-tui": "*",
+    "@mariozechner/pi-ai": "*",
+    "@sinclair/typebox": "*"
+  }
+}

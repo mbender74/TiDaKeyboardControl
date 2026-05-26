@@ -73,6 +73,7 @@
 		</manifest>
 	</android>
 	<modules>
+	        <module>dk.napp.drawer</module>
 	        <module>de.marcbender.keyboardcontrol</module>
 	</modules>
 	<deployment-targets>
@@ -81,4 +82,5 @@
 		<target device="iphone">true</target>
 	</deployment-targets>
 	<sdk-version>13.3.0</sdk-version>
+	<!-- <sdk-version>13.2.0.GA</sdk-version> -->
 </ti:app>
