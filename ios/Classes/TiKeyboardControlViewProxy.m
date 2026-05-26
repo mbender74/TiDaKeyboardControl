@@ -715,8 +715,11 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             //                   tvf.origin.x, tvf.origin.y, tvf.size.width, tvf.size.height,
             //                   trans, strongSelf->nativeScrollView.contentInset.bottom);
 
+            // Nach Swipe-Ende: Toolbar instant nach unten (keine Animation)
+            BOOL postSwipe = CGRectIsNull(strongSelf->initialAccessoryViewFrame);
+            NSTimeInterval hideDuration = postSwipe ? 0 : strongSelf->keyboardTransitionDuration;
             [strongSelf applyToolbarTranslation:trans
-                                    animated:YES duration:strongSelf->keyboardTransitionDuration
+                                    animated:(hideDuration > 0) duration:hideDuration
                                        curve:strongSelf->animationCurve];
             [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
             [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
