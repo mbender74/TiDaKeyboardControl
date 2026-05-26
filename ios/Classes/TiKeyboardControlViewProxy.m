@@ -113,6 +113,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         self.cachedKeyWindow = nil;
         self.cachedStatusBarHeight = 0.0;
         self.cachedNavigationBarHeight = 0.0;
+        /* Performance: translation cache for KVO path (#1) */
+        self.cachedTranslation = 0.0;
+        self.lastKVOFrame = CGRectNull;
         settledShift = 0;
         hasSettledShift = NO;
         keyboardInsetSettled = NO;
@@ -619,6 +622,14 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
         strongSelf->lastInputAccessoryViewFrame = inputAccessoryViewFrame;
 
+        /* Performance #1: cache translation — compute once, reuse throughout KVO callback */
+        BOOL frameChanged = !CGRectEqualToRect(inputAccessoryViewFrame, strongSelf->_lastKVOFrame);
+        if (frameChanged) {
+            strongSelf->_cachedTranslation = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+            strongSelf->_lastKVOFrame = inputAccessoryViewFrame;
+        }
+        CGFloat cachedTrans = strongSelf->_cachedTranslation;
+
         CGRect tvf = toolbarview.frame;
         //         NSLog(@"[TiDAKBC] KVO | frame.y=%f, h=%f | vis=%d, hide=%d, settled=%d, initAccIsNull=%d, mResize=%d",
         //               inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.size.height,
@@ -639,7 +650,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             strongSelf->lastAccessoryViewHeight = inputAccessoryViewFrame.size.height;
 
             CGFloat value = CGRectGetHeight(strongSelf->view.frame) - CGRectGetMinY(inputAccessoryViewFrame);
-            CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+            CGFloat trans = cachedTrans;
             // Use current frame translation (not stale lastShiftValue from keyboardDidShow)
             // so toolbar resizes between keyboardDidShow and first KVO don't get clobbered.
             strongSelf->settledShift = trans;
@@ -659,7 +670,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                                     animated:(settleDuration > 0) duration:settleDuration
                                        curve:strongSelf->animationCurve];
             // Apply inset once here — this is the only chance before animation drift starts
-            [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+            [strongSelf applyScrollViewInset:inputAccessoryViewFrame translation:cachedTrans];
             [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
 
             //             NSLog(@"[TiDAKBC] KVO SETTLE BASELINE | DONE — contentInset.bottom=%.0f", strongSelf->nativeScrollView.contentInset.bottom);
@@ -682,7 +693,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
        // Keyboard hide: CALayer tracks position — MUST be FIRST when hasSettledShift=YES
         if (strongSelf->keyboardWillHide) {
-            CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+            CGFloat trans = cachedTrans;
             //             NSLog(@"[TiDAKBC] KVO HIDE | tv={{%f,%f},{%f,%f}}, translation=%f, inset before=%.0f",
             //                   tvf.origin.x, tvf.origin.y, tvf.size.width, tvf.size.height,
             //                   trans, strongSelf->nativeScrollView.contentInset.bottom);
@@ -693,7 +704,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             [strongSelf applyToolbarTranslation:trans
                                     animated:(hideDuration > 0) duration:hideDuration
                                        curve:strongSelf->animationCurve];
-            [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+            [strongSelf applyScrollViewInset:inputAccessoryViewFrame translation:cachedTrans];
             [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
             return;
         }
@@ -711,12 +722,12 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 if (fabs(settleDeltaY) < kTIDKBCSettleThreshold) {
                     //                     NSLog(@"[TiDAKBC] KVO TRUE-SETTLED | frame stable — activating inset updates");
                     strongSelf->keyboardInsetSettled = YES;
-                    CGFloat settleTrans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+                    CGFloat settleTrans = cachedTrans;
                     strongSelf->settledShift = settleTrans;
                     //                     NSLog(@"[TiDAKBC] KVO TRUE-SETTLED | settledShift=%f (from actual translation)", settleTrans);
 
                     // Re-apply insets with confirmed settled position
-                    [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+                    [strongSelf applyScrollViewInset:inputAccessoryViewFrame translation:cachedTrans];
                     [strongSelf applyAutoSizeBottomConstraintWithTranslation:settleTrans];
                     //                     NSLog(@"[TiDAKBC] KVO TRUE-SETTLED | inset=%.0f, settledShift=%f",
                     //                           strongSelf->nativeScrollView.contentInset.bottom, strongSelf->settledShift);
@@ -744,7 +755,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 // Update swipe baseline to the NEW position (where iOS actually moved the accessory view)
                 strongSelf->initialAccessoryViewFrame = inputAccessoryViewFrame;
 
-                CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+                CGFloat trans = cachedTrans;
                 strongSelf->settledShift = trans; // sync with actual toolbar translation
                 //                 NSLog(@"[TiDAKBC] KVO TOOLBAR RESIZE | newBaseline.y=%f, translation=%f, settledShift=%f",
                 //                       inputAccessoryViewFrame.origin.y, trans, strongSelf->settledShift);
@@ -783,7 +794,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
             // Spring settled (deltaY < kTIDKBCSettleThreshold): CALayer auf settledShift resettet
             if (fabs(deltaY) < kTIDKBCSettleThreshold && strongSelf->manualKeyboardResize == NO) {
-                CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+                CGFloat trans = cachedTrans;
                 strongSelf->settledShift = trans;
                 strongSelf->initialAccessoryViewFrame = inputAccessoryViewFrame;
 
@@ -796,7 +807,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
   // Normal settled state (no swipe): UIView animation with keyboard
         } else if (strongSelf->keyboardVisible) {
-            CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
+            CGFloat trans = cachedTrans;
             //             NSLog(@"[TiDAKBC] KVO SETTLED | tv={{%f,%f},{%f,%f}}, translation=%f, insetSettled=%d, lastShift=%f",
             //                   tvf.origin.x, tvf.origin.y, tvf.size.width, tvf.size.height,
             //                   trans, strongSelf->keyboardInsetSettled, strongSelf->lastShiftValue);
@@ -807,7 +818,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             // Skip inset updates until first KVO callback has settled (prevents animation drift)
             if (strongSelf->keyboardInsetSettled) {
                 //                 NSLog(@"[TiDAKBC] KVO SETTLED | applying inset, bottom before=%.0f", strongSelf->nativeScrollView.contentInset.bottom);
-                [strongSelf applyScrollViewInset:inputAccessoryViewFrame];
+                [strongSelf applyScrollViewInset:inputAccessoryViewFrame translation:cachedTrans];
                 [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
 
                 } else {
@@ -1463,8 +1474,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 }
 -(void)runAfterDelay:(CGFloat)delay block:(void (^)(void))block
 {
-    void (^block_)(void) = [block copy];
-    [self performSelector:@selector(runBlock:) withObject:block_ afterDelay:delay];
+    /* Performance #7: block ist bereits als Block-Objekt vorhanden, kein zusätzliches copy nötig */
+    [self performSelector:@selector(runBlock:) withObject:block afterDelay:delay];
 }
 
 
@@ -1484,7 +1495,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     }
 
     // Apply contentInset
-    [self applyScrollViewInset:keyboardFrameInView];
+    [self applyScrollViewInset:keyboardFrameInView translation:t];
 
     // Auto-scroll to bottom
     [self scrollToBottomIfNeeded];
@@ -1579,6 +1590,12 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 {
     CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
 
+    /* Performance #2: skip CALayer update if transform is unchanged */
+    if (CGAffineTransformEqualToTransform(toolbarview.layer.affineTransform, transform)) {
+        lastShiftValue = translation;
+        return;
+    }
+
     if (animated && duration > 0) {
         // UIView-Animation blockiert CALayer-Änderungen — das ist OK,
         // weil CALayer.affineTransform innerhalb von UIView.animate
@@ -1615,6 +1632,15 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 - (void)applyScrollViewInset:(CGRect)inputAccessoryFrame
 {
     CGFloat translation = [self computeToolbarTranslation:inputAccessoryFrame];
+    [self applyScrollViewInset:inputAccessoryFrame translation:translation];
+}
+
+/* Overload: skip internal computeToolbarTranslation when translation is pre-computed */
+- (void)applyScrollViewInset:(CGRect)inputAccessoryFrame translation:(CGFloat)translation
+{
+    if (translation < 0) {
+        translation = [self computeToolbarTranslation:inputAccessoryFrame];
+    }
     CGRect toolbarFrame = toolbarview.frame;
     CGFloat bottomInset = translation + toolbarFrame.size.height;
 

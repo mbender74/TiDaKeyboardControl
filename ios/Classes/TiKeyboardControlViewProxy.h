@@ -125,6 +125,10 @@
 @property (nonatomic, assign) CGFloat cachedStatusBarHeight;
 @property (nonatomic, assign) CGFloat cachedNavigationBarHeight;
 
+/* Performance: cached translation to avoid repeated computeToolbarTranslation in KVO path */
+@property (nonatomic, assign) CGFloat cachedTranslation;
+@property (nonatomic, assign) CGRect lastKVOFrame;
+
 
 
 /* Helper-Methoden (implementiert in TiKeyboardControlViewProxy+Metrics) */
@@ -149,6 +153,8 @@
 - (CGFloat)computeToolbarTranslation:(CGRect)inputAccessoryFrame;
 - (void)applyToolbarTranslation:(CGFloat)translation animated:(BOOL)animated duration:(NSTimeInterval)duration curve:(NSInteger)curve;
 - (void)applyScrollViewInset:(CGRect)inputAccessoryFrame;
+/* Overload: pass pre-computed translation (>=0) to skip internal computeToolbarTranslation */
+- (void)applyScrollViewInset:(CGRect)inputAccessoryFrame translation:(CGFloat)translation;
 - (void)scrollToBottomIfNeeded;
 - (void)handleToolbarBoundsChangeToHeight:(CGFloat)newHeight;
 - (void)applyAutoSizeBottomConstraintWithTranslation:(CGFloat)translation;
