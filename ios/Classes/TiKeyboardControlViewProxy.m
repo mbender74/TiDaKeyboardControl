@@ -116,6 +116,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         /* Performance: translation cache for KVO path (#1) */
         self.cachedTranslation = 0.0;
         self.lastKVOFrame = CGRectNull;
+        /* Performance: autoSize bottom cache (#B, #E) */
+        self.lastAutoSizeBottomValue = 0.0;
         settledShift = 0;
         hasSettledShift = NO;
         keyboardInsetSettled = NO;
@@ -1623,6 +1625,11 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 {
     if (!autoSizeAndKeepScrollingViewAboveToolbar) return;
     CGFloat bottomValue = initialScrollingViewBottomValue + toolbarview.frame.size.height + translation;
+
+    /* Performance #B: skip refreshView wenn bottomValue sich nicht geändert hat */
+    if (fabs(bottomValue - _lastAutoSizeBottomValue) < 0.1) return;
+    _lastAutoSizeBottomValue = bottomValue;
+
     LayoutConstraint* lp = [_scrollingView layoutProperties];
     lp->bottom = TiDimensionDip(bottomValue);
     [_scrollingView refreshView:nil];

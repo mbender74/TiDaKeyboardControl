@@ -128,6 +128,8 @@
 /* Performance: cached translation to avoid repeated computeToolbarTranslation in KVO path */
 @property (nonatomic, assign) CGFloat cachedTranslation;
 @property (nonatomic, assign) CGRect lastKVOFrame;
+/* Performance: cached autoSize bottom value to skip refreshView when unchanged (#B, #E) */
+@property (nonatomic, assign) CGFloat lastAutoSizeBottomValue;
 
 
 
