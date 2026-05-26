@@ -7,6 +7,7 @@
 //
 
 #import "TiKeyboardControlViewProxy+Metrics.h"
+#import "TiKeyboardControlConstants.h"
 
 #pragma mark - Key Window Resolution
 
@@ -68,7 +69,7 @@
 
 - (CGFloat)calculateTabBarHeight
 {
-    CGFloat baseTabBarHeight = 49.0;
+    CGFloat baseTabBarHeight = kTIDKBCBaseTabBarHeight;
     CGFloat safeAreaBottom = 0.0;
 
     if (@available(iOS 11.0, *)) {
@@ -109,7 +110,7 @@
 
 - (CGFloat)calculateNavigationBarHeight
 {
-    CGFloat fallbackHeight = 44.0;
+    CGFloat fallbackHeight = kTIDKBCBaseNavBarHeight;
 
     if (@available(iOS 11.0, *)) {
         UIWindow *keyWindow = [self resolveKeyWindow];

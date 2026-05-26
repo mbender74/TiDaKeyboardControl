@@ -9,8 +9,8 @@
 
 @interface BABFrameObservingInputAccessoryView : UIView
 
-@property (nonatomic, copy) void (^inputAcessoryViewFrameChangedBlock)(CGRect frame);
-@property (nonatomic, readonly) CGRect inputAcesssorySuperviewFrame;
+@property (nonatomic, copy) void (^inputAccessoryViewFrameChangedBlock)(CGRect frame);
+@property (nonatomic, readonly) CGRect inputAccessorySuperviewFrame;
 
 - (void)doConfig;
 

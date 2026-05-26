@@ -7,6 +7,7 @@
 
 #import "DeMarcbenderKeyboardcontrolModule.h"
 #import "TiKeyboardControlViewProxy.h"
+#import "TiKeyboardControlConstants.h"
 
 #import "TiBase.h"
 #import "TiHost.h"

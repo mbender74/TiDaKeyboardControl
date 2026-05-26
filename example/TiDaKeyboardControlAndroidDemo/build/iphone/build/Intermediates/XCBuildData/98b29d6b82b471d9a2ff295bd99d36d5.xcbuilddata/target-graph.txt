@@ -1,2 +1,0 @@
-Target dependency graph (1 target)
-Target 'Keyboardcontroldemo' in project 'Keyboardcontroldemo' (no dependencies)

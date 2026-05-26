@@ -6,6 +6,7 @@
 //
 
 #import "BABFrameObservingInputAccessoryView.h"
+#import "TiKeyboardControlConstants.h"
 
 static void *BABFrameObservingContext = &BABFrameObservingContext;
 
@@ -40,7 +41,7 @@ static void *BABFrameObservingContext = &BABFrameObservingContext;
 
 #pragma mark - Setters & Getters
 
-- (CGRect)inputAcesssorySuperviewFrame {
+- (CGRect)inputAccessorySuperviewFrame {
     
     return self.superview.frame;
 }
@@ -69,13 +70,13 @@ static void *BABFrameObservingContext = &BABFrameObservingContext;
     
     if (object == self.superview && ([keyPath isEqualToString:@"frame"] || [keyPath isEqualToString:@"center"]) && context == BABFrameObservingContext) {
         
-        if(self.inputAcessoryViewFrameChangedBlock) {
+        if(self.inputAccessoryViewFrameChangedBlock) {
             
             CGRect frame = self.superview.frame;
             
             //NSLog ( @" observeValueForKeyPath: %f", frame.size.height );
             //NSLog ( @" observeValueForKeyPath Y: %f", frame.origin.y );
-            self.inputAcessoryViewFrameChangedBlock(frame);
+            self.inputAccessoryViewFrameChangedBlock(frame);
         }
     }
 }
@@ -87,14 +88,14 @@ static void *BABFrameObservingContext = &BABFrameObservingContext;
   //  NSLog ( @" ####################  assescorryview layoutSubviews");
 
     //CGRect frame = self.superview.frame;
-   // self.inputAcessoryViewFrameChangedBlock(frame);
+   // self.inputAccessoryViewFrameChangedBlock(frame);
 }
 
 
 
 - (void)doConfig {       
     CGRect frame = self.superview.frame;
-    self.inputAcessoryViewFrameChangedBlock(frame);
+    self.inputAccessoryViewFrameChangedBlock(frame);
 }
 
 
