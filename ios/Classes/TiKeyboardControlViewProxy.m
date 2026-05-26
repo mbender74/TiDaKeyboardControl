@@ -110,7 +110,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         self.manualPanning = false;
         stop = false;
         animationCurve = 7; // Default: UIViewAnimationCurveEaseInOut
-        isSwiping = NO;
         toolbarInputViewDiff = 0;
         isNavigationWindowBottomDiff = 0;
         altAddPixel = 0;
@@ -121,6 +120,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         cachedKeyWindow = nil;
         cachedStatusBarHeight = 0.0;
         cachedNavigationBarHeight = 0.0;
+        settledShift = 0;
+        hasSettledShift = NO;
+        keyboardInsetSettled = NO;
     }
 
     return self;
@@ -663,7 +665,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             // Instead, wait until a KVO callback shows no change from previous -> that's true settle.
             strongSelf->initialAccessoryViewFrame = inputAccessoryViewFrame;
             strongSelf->lastAccessoryViewHeight = inputAccessoryViewFrame.size.height;
-            strongSelf->cachedSwipeTransform = CGAffineTransformIdentity;
 
             CGFloat value = CGRectGetHeight(strongSelf->view.frame) - CGRectGetMinY(inputAccessoryViewFrame);
             CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
@@ -777,7 +778,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 [CATransaction begin];
                 [CATransaction setDisableActions:YES];
                 strongSelf->toolbarview.layer.affineTransform = CGAffineTransformMakeTranslation(0, -trans);
-                strongSelf->cachedSwipeTransform = CGAffineTransformIdentity;
                 [CATransaction commit];
 
                 // NO keyboardInsetSettled=YES here — wait for true-settle or normal settled path to set it
@@ -789,52 +789,34 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                     [strongSelf scrollToBottomIfNeeded];
                 }
 
-            // Normal swipe during settled keyboard — CALayer for 120Hz smoothness
+            // Normal swipe during settled keyboard — CALayer für 120Hz smoothness
             } else if (!strongSelf->manualKeyboardResize && fabs(deltaY) >= 0.5) {
                 CGFloat newTy = -(strongSelf->settledShift) + deltaY;
                 if (newTy > 0) newTy = 0;
                 CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, newTy);
 
-                //                 NSLog(@"[TiDAKBC] KVO SWIPE STEP | settledShift=%f, deltaY=%f -> newTy=%f",
-                //                       strongSelf->settledShift, deltaY, newTy);
+                [CATransaction begin];
+                [CATransaction setDisableActions:YES];
+                strongSelf->toolbarview.layer.affineTransform = newTransform;
+                [CATransaction commit];
 
-                if (!CGAffineTransformEqualToTransform(newTransform, strongSelf->cachedSwipeTransform)) {
-                    CGFloat oldTy = strongSelf->cachedSwipeTransform.ty;
-                    //                     NSLog(@"[TiDAKBC] KVO SWIPE APPLY | CALayer transform: ty %f -> %f (NO inset change during swipe)", oldTy, newTy);
-                    strongSelf->cachedSwipeTransform = newTransform;
-                    [CATransaction begin];
-                    [CATransaction setDisableActions:YES];
-                    strongSelf->toolbarview.layer.affineTransform = newTransform;
-                    [CATransaction commit];
+                // Update autoSize bottom constraint to follow swipe (without animation)
+                [UIView performWithoutAnimation:^{
+                    [strongSelf applyAutoSizeBottomConstraintWithTranslation:strongSelf->settledShift - deltaY];
+                }];
+            }
 
-                    // Update autoSize bottom constraint to follow swipe (without animation)
-                    [UIView performWithoutAnimation:^{
-                        [strongSelf applyAutoSizeBottomConstraintWithTranslation:strongSelf->settledShift - deltaY];
-                    }];
-                } else {
-                    //                     NSLog(@"[TiDAKBC] KVO SWIPE STEP | SKIP transform unchanged (ty=%f)", newTy);
-                }
-            } else if (fabs(deltaY) < 0.5 && !CGAffineTransformEqualToTransform(strongSelf->cachedSwipeTransform, CGAffineTransformIdentity)) {
-                // Spring settled: keep CALayer as rendering surface (TiUIView doesn't handle
-                // UIView.transform correctly). Apply translation directly to CALayer,
-                // update baseline, reset cached swipe state.
-                //                 NSLog(@"[TiDAKBC] KVO SWIPE SPRING SETTLED | deltaY=%f -> keeping CALayer as rendering surface", deltaY);
-
+            // Spring settled (deltaY < 0.5): CALayer auf settledShift resettet
+            if (fabs(deltaY) < 0.5 && strongSelf->manualKeyboardResize == NO) {
                 CGFloat trans = [strongSelf computeToolbarTranslation:inputAccessoryViewFrame];
                 strongSelf->settledShift = trans;
                 strongSelf->initialAccessoryViewFrame = inputAccessoryViewFrame;
-                //                 NSLog(@"[TiDAKBC] KVO SWIPE SPRING SETTLED | translation=%f, settledShift=%f, newBaseline.y=%f", trans, trans, inputAccessoryViewFrame.origin.y);
 
                 [CATransaction begin];
                 [CATransaction setDisableActions:YES];
                 strongSelf->toolbarview.layer.affineTransform = CGAffineTransformMakeTranslation(0, -trans);
-                strongSelf->cachedSwipeTransform = CGAffineTransformIdentity;
                 [CATransaction commit];
                 [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
-                strongSelf->springSettledJustHappened = YES;
-            } else if (fabs(deltaY) < 0.5 && CGAffineTransformEqualToTransform(strongSelf->cachedSwipeTransform, CGAffineTransformIdentity)) {
-                // Settled state with CALayer already identity — UIView handles toolbar, NO inset change
-                //                 NSLog(@"[TiDAKBC] KVO SWIPE SETTLED-IDENTITY | deltaY=%f (no inset during swipe)", deltaY);
             }
 
   // Normal settled state (no swipe): UIView animation with keyboard
@@ -1201,7 +1183,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     }
 
     self->hasSettledShift = YES;
-    self->cachedSwipeTransform = CGAffineTransformIdentity;
 
     //     NSLog(@"[TiDAKBC] keyboardDidShow | settledShift=%f lastShiftValue=%f lastAccH=%.0f accFrame={{%f,%f},{%f,%f}} contentInset.bottom=%.0f keyboardInsetSettled=%d",
     //           self->settledShift, self->lastShiftValue, self->lastAccessoryViewHeight,
@@ -1265,7 +1246,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     self->toolbarview.layer.affineTransform = CGAffineTransformIdentity;
-    self->cachedSwipeTransform = CGAffineTransformIdentity;
     [CATransaction commit];
 
    // Reset for next keyboard show
@@ -1329,12 +1309,11 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // already reset the CALayer, and resetting here would cause a visual snap-back.
     // Also skip after spring-settled: CALayer has the swipe transform, resetting it
     // would make the toolbar disappear (UIView transform not synced until spring-settled).
-    if (!keyboardVisible && !self->springSettledJustHappened) {
+    if (!keyboardVisible) {
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         toolbarview.layer.affineTransform = CGAffineTransformIdentity;
         [CATransaction commit];
-        self->cachedSwipeTransform = CGAffineTransformIdentity;
     }
 
     // After a toolbar resize, iOS re-adjusts the keyboard — allow UIView animation to apply the transform
@@ -1421,10 +1400,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // apply the translation directly without resetting state.
     if (!CGRectIsEmpty(lastInputAccessoryViewFrame) && nativeScrollView != nil) {
         CGFloat trans = [self computeToolbarTranslation:lastInputAccessoryViewFrame];
-        if (!keyboardVisible && !self->springSettledJustHappened) {
+        if (!keyboardVisible) {
             lastShiftValue = 0;
-            isSwiping = NO;
-        }
+                    }
         //         NSLog(@"[TiDAKBC] keyboardWillShow | apply translation=%f, lastAcc={{%f,%f},{%f,%f}}",
         //               trans, lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
         //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
@@ -1445,7 +1423,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     }
 
     // Clear the flag at the end of keyboardWillShow regardless of which path was taken
-    self->springSettledJustHappened = NO;
 }
 
 - (void)teardownKeyboardPanning
@@ -1460,6 +1437,13 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardDidHideNotification object:nil];
     [[NSNotificationCenter defaultCenter] removeObserver:self name:UIKeyboardDidShowNotification object:nil];
+
+    // CALayer resettet für nächsten Keyboard-Show
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    toolbarview.layer.affineTransform = CGAffineTransformIdentity;
+    [CATransaction commit];
+
     safeAreaValue = 0;
     keyboardVisible = false;
     lastShiftValue = 0;
@@ -1530,11 +1514,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     BOOL isNavWindow = isNavigationWindow;
     BOOL extendSafeArea_ = extendSafeArea;
 
-    // Apply toolbar transform (CALayer for swipe, UIView animation for rest)
-    if (!isSwiping && !manualKeyboardResize && !self.manualPanning) {
+    // Apply toolbar transform — CALayer für alle Fälle
+    if (!manualKeyboardResize && !self.manualPanning) {
         [self applyToolbarTranslation:t animated:YES duration:keyboardTransitionDuration curve:animationCurve];
-    } else if (isSwiping || keyboardwillHide) {
-        // CALayer already handles swipe; just update insets and scroll-to-bottom here
     }
 
     // Apply contentInset
@@ -1631,43 +1613,26 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
 - (void)applyToolbarTranslation:(CGFloat)translation animated:(BOOL)animated duration:(NSTimeInterval)duration curve:(NSInteger)curve
 {
-    //     NSLog(@"[TiDAKBC] applyToolbarTranslation | translation=%f animated=%d duration=%f curve=%ld path=%s (swiping=%d willHide=%d)",
-    //           translation, animated, duration, (long)curve,
-    //           (isSwiping || keyboardwillHide) ? "CALayer" : "UIView",
-    //           isSwiping, keyboardwillHide);
+    CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
 
-    if (isSwiping || keyboardwillHide) {
-        // CALayer for 120Hz smoothness during swipe/hide
-        CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
-        //         NSLog(@"[TiDAKBC] applyToolbarTranslation | CALAYER: ty=%-10f cached=(%g,%g)", -translation, cachedSwipeTransform.ty, transform.ty);
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        toolbarview.layer.affineTransform = transform;
-        cachedSwipeTransform = transform;
-        [CATransaction commit];
-    } else if (!animated || duration <= 0) {
-        // Instant (no animation) — remove any in-flight UIView animation on transform
-        // and set directly via CALayer to avoid coalescing with the keyboard animation.
-        CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
-        //         NSLog(@"[TiDAKBC] applyToolbarTranslation | INSTANT: ty=%f", -translation);
-        [toolbarview.layer removeAllAnimations];
-        toolbarview.transform = transform;
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        toolbarview.layer.affineTransform = transform;
-        cachedSwipeTransform = transform;
-        [CATransaction commit];
-    } else {
-        // UIView animation for smooth keyboard-aligned transitions
-        CGAffineTransform transform = CGAffineTransformMakeTranslation(0, -translation);
+    if (animated && duration > 0) {
+        // UIView-Animation blockiert CALayer-Änderungen — das ist OK,
+        // weil CALayer.affineTransform innerhalb von UIView.animate
+        // smooth animiert wird (keine Konflikte mehr!)
         NSTimeInterval animDuration = _manualPanning ? 0 : duration;
-        //         NSLog(@"[TiDAKBC] applyToolbarTranslation | UIView: translation=%-10f duration=%.4f curve=%ld", -translation, animDuration, (long)curve);
         [UIView animateWithDuration:animDuration
                               delay:0
                             options:(curve << 16) | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
-            toolbarview.transform = transform;
+            toolbarview.layer.affineTransform = transform;
         } completion:nil];
+    } else {
+        // Instant: CALayer direkt setzen, in-flight animations entfernen
+        [toolbarview.layer removeAllAnimations];
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        toolbarview.layer.affineTransform = transform;
+        [CATransaction commit];
     }
 
     lastShiftValue = translation;
@@ -1773,15 +1738,11 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     //     NSLog(@"[TiDAKBC] handleToolbarBoundsChangeToHeight | OLD_H=%f NEW_H=%f DELTA=%f initialKeyboardTriggerOffset=%f toolbarResizeDiff=%f",
     //           oldHeight, newHeight, delta, initialKeyboardTriggerOffset, toolbarResizeDiff);
 
-    // Reset CALayer swipe transform on real resize
-    if (!CGAffineTransformEqualToTransform(cachedSwipeTransform, CGAffineTransformIdentity)) {
-        //         NSLog(@"[TiDAKBC] handleToolbarBoundsChangeToHeight | resetting CALayer swipe transform (ty=%f)", cachedSwipeTransform.ty);
-        [CATransaction begin];
-        [CATransaction setDisableActions:YES];
-        toolbarview.layer.affineTransform = CGAffineTransformIdentity;
-        cachedSwipeTransform = CGAffineTransformIdentity;
-        [CATransaction commit];
-    }
+    // Reset CALayer transform on real resize
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    toolbarview.layer.affineTransform = CGAffineTransformIdentity;
+    [CATransaction commit];
 
     // Update swipe baseline to new toolbar frame.
     // NOTE: Do NOT set initialAccessoryViewFrame here — iOS may still be animating the accessory view position.

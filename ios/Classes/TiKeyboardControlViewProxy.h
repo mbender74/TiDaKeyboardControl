@@ -104,11 +104,9 @@
     CGFloat safeAreaValue;
     BOOL keyboardPanningOn;
     NSInteger animationCurve; // stored as value, not pointer (default: 7 = EaseInOut)
-    BOOL isSwiping; // YES when KVO callback is active during swipe
     CGRect initialAccessoryViewFrame; // baseline after keyboardDidShow
     CGFloat initialAccessoryViewFrameYWhenHidden; // accessory view y when keyboard is hidden
     CGFloat lastAccessoryViewHeight; // previous KVO callback height (for resize detection)
-    CGAffineTransform cachedSwipeTransform; // for delta skip
     CGFloat settledShift; // shift at last keyboardDidShow (for absolute transform calc)
     BOOL hasSettledShift; // YES once settledShift is valid
     CGFloat tabgroupHeight;
@@ -125,7 +123,6 @@
     BOOL autoScrollToBottomDone;
     BOOL autoScrollToBottomDoneAfterShow; // tracks if we already scrolled after this keyboard show cycle
     BOOL keyboardInsetSettled; // YES after first KVO callback post-keyboard-show; prevents inset drift during animation
-    BOOL springSettledJustHappened; // YES after spring-settled; prevents keyboardWillShow from re-applying
     BOOL extendSafeArea;
     BOOL ignoreExtendSafeArea;
     TiUIView * proxyView;
