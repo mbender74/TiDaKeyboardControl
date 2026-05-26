@@ -1,0 +1,406 @@
+<h1>TiDAKeyboardControl Module</h1>
+
+<h2>Description</h2>
+
+<p>Titanium module for interactive keyboard dismiss for iOS and Android (from API level 30+ / Android 11).</p>
+
+<p>iOS was mostly rewritten for iOS 16+ compatibility with smooth 120Hz keyboard tracking.</p>
+
+<h2>Accessing the Module</h2>
+
+<p><code>javascript
+var keyboardControlModule = require(&#39;de.marcbender.keyboardcontrol&#39;);
+</code></p>
+
+<h2>Platform Parity</h2>
+
+<p>| Property | iOS | Android | Notes |
+|---|:---:|:---:|---|
+| <code>scrollingView</code> | :white<em>check</em>mark: | :white<em>check</em>mark: | Required on both platforms |
+| <code>toolbarView</code> | :white<em>check</em>mark: | :white<em>check</em>mark: | Required on both platforms |
+| <code>parentWindow</code> | :white<em>check</em>mark: | — | Required on iOS for coordinate calculations, TabGroup detection, and safe area handling |
+| <code>textfield</code> | :white<em>check</em>mark: | — | Required on iOS for interactive dismiss and first-responder tracking |
+| <code>keyboardPanning</code> | :white<em>check</em>mark: | — | On iOS: enables swipe-to-dismiss. On Android: handled automatically via WindowInsetsAnimation |
+| <code>autoAdjustBottomPadding</code> | :white<em>check</em>mark: | :white<em>check</em>mark: | iOS uses <code>contentInset.bottom</code>; Android uses RecyclerView bottom padding |
+| <code>autoSizeAndKeepScrollingViewAboveToolbar</code> | :white<em>check</em>mark: | :white<em>check</em>mark: | iOS uses <code>bottom</code> layout constraint; Android adjusts view bottom property |
+| <code>autoScrollToBottom</code> | :white<em>check</em>mark: | :white<em>check</em>mark: | iOS animates in sync with keyboard curve; Android uses <code>scrollToPosition</code> or <code>fullScroll</code> |
+| <code>ignoreExtendSafeArea</code> | :white<em>check</em>mark: | — | iOS only — Android uses <code>setDecorFitsSystemWindows(false)</code> unconditionally |
+| <code>showKeyboardOnScrollUp</code> | :white<em>check</em>mark: | :white<em>check</em>mark: | iOS calls <code>becomeFirstResponder</code> on overscroll; Android uses <code>WindowInsetsAnimation</code> |</p>
+
+<h2>Property Interactions</h2>
+
+<h3>Layout Mode Interaction</h3>
+
+<p>The two layout properties are mutually exclusive. Setting <code>autoSizeAndKeepScrollingViewAboveToolbar: true</code> forces <code>autoAdjustBottomPadding</code> to <code>false</code> internally.</p>
+
+<p>| <code>autoAdjustBottomPadding</code> | <code>autoSizeAndKeepScrollingViewAboveToolbar</code> | Result |
+|---|---|---|
+| <code>false</code> (default) | <code>false</code> (default) | No layout adjustment. The toolbar overlaps scroll content when the keyboard appears. Use only if you handle layout yourself. |
+| <code>true</code> | <code>false</code> | <strong>ContentInset mode.</strong> Scroll view keeps full height. <code>contentInset.bottom</code> is increased so content scrolls behind the translucent toolbar. |
+| <code>false</code> | <code>true</code> | <strong>AutoSize mode.</strong> Scroll view physically resizes via <code>bottom</code> constraint. Content never appears behind the toolbar. |
+| <code>true</code> | <code>true</code> | Same as <code>false</code>/<code>true</code> — <code>autoSizeAndKeepScrollingViewAboveToolbar</code> takes priority and forces <code>autoAdjustBottomPadding</code> to <code>false</code>. |</p>
+
+<h3><code>autoScrollToBottom</code> Interaction with Layout Mode</h3>
+
+<p>| Layout Mode | Scroll Target Calculation |
+|---|---|
+| <code>autoAdjustBottomPadding: true</code> | <code>contentSize.height - frame.height + contentInset.bottom + safeAreaInsets.bottom</code> |
+| <code>autoSizeAndKeepScrollingViewAboveToolbar: true</code> | <code>contentSize.height - frame.height + translation + toolbarHeight + safeAreaInsets.bottom</code> |</p>
+
+<h3><code>ignoreExtendSafeArea</code> Interaction with Window Context</h3>
+
+<p>| Window Context | <code>extendSafeArea</code> | <code>ignoreExtendSafeArea</code> | Toolbar Behavior |
+|---|---|---|---|
+| Standalone window | <code>true</code> | <code>false</code> (default) | Toolbar shifted up by safe area inset (above home indicator) |
+| Standalone window | <code>true</code> | <code>true</code> | Toolbar extends into safe area (home indicator area) |
+| Standalone window | <code>false</code> | ignored | No safe area adjustment needed |
+| TabGroup / NavigationWindow | any | ignored | Module auto-adjusts for tab bar and nav bar offsets |</p>
+
+<h3>Property Dependency Graph</h3>
+
+<p><code>
+scrollingView ─────────────────────────┐
+toolbarView ────────────────────────────┤ Required inputs
+parentWindow (iOS) ─────────────────────┤
+textfield (iOS) ────────────────────────┘
+        │
+        ▼
+keyboardPanning (iOS) ──► enables interactive swipe-to-dismiss
+showKeyboardOnScrollUp ──► enables show-on-overscroll-at-bottom
+        │
+        ▼
+  ┌─────┴─────────────────────────┐
+  │  Layout Mode (pick one):       │
+  │  autoAdjustBottomPadding: true  │──► contentInset.bottom approach
+  │  OR                            │
+  │  autoSizeAndKeepScrollingView  │──► bottom constraint approach
+  │  AboveToolbar: true            │    (forces autoAdjustBottomPadding=false)
+  └─────┬─────────────────────────┘
+        │
+        ├──► autoScrollToBottom ──────► scroll target depends on layout mode
+        │
+        └──► ignoreExtendSafeArea ───► only affects standalone + extendSafeArea windows
+</code></p>
+
+<h3>What Each Property Affects</h3>
+
+<p>| Property | Initial Setup | Keyboard Show | Keyboard Hide | Toolbar Resize | Interactive Swipe |
+|---|---|---|---|---|---|
+| <code>autoAdjustBottomPadding</code> | Sets <code>contentInset.bottom += toolbarHeight</code> | Updates <code>contentInset.bottom = translation + toolbarHeight</code> | Resets <code>contentInset.bottom</code> | Updates <code>contentInset.bottom</code> | Updates <code>contentInset.bottom</code> via KVO |
+| <code>autoSizeAndKeepScrollingViewAboveToolbar</code> | Sets <code>bottom = initialBottom + toolbarHeight</code> | Sets <code>bottom = initialBottom + toolbarHeight + translation</code> | Sets <code>bottom = initialBottom + toolbarHeight</code> | Sets <code>bottom = initialBottom + toolbarHeight + translation</code> | Sets <code>bottom</code> via KVO delta |
+| <code>autoScrollToBottom</code> | — | Scrolls to bottom (animated in sync with keyboard) | — | Scrolls to bottom (immediate) | Scrolls to bottom on settle |
+| <code>ignoreExtendSafeArea</code> | Adjusts toolbar transform and <code>contentInset.bottom</code> correction | — | — | — | — |
+| <code>keyboardPanning</code> | Attaches <code>UIPanGestureRecognizer</code> and <code>BABFrameObservingInputAccessoryView</code> | — | — | — | Drives KVO callbacks for 120Hz toolbar tracking |
+| <code>showKeyboardOnScrollUp</code> | Installs <code>UIScrollViewDelegate</code> proxy | — | — | — | Calls <code>becomeFirstResponder</code> on overscroll at bottom |</p>
+
+<h2>Properties</h2>
+
+<h3>Required Properties</h3>
+
+<p>| Property | Type | Platform | Description |
+|---|---|---|---|
+| <code>scrollingView</code> | View | iOS, Android | The scrollable view (ListView, TableView, or ScrollView). Automatically added as a child of the interactiveKeyboardView. |
+| <code>toolbarView</code> | View | iOS, Android | The toolbar/input bar view. Must be a <code>Ti.UI.View</code>. Automatically added as a child. |</p>
+
+<h3>iOS-Only Required Properties</h3>
+
+<p>| Property | Type | Description |
+|---|---|---|
+| <code>parentWindow</code> | Window | The window containing the interactiveKeyboardView. Required for correct coordinate calculations, TabGroup detection, and safe area handling. |
+| <code>textfield</code> | TextArea/TextField | The text input view (<code>Ti.UI.TextArea</code> or <code>Ti.UI.TextField</code>) inside your toolbar. Required for interactive keyboard dismiss and first-responder tracking. |
+| <code>keyboardPanning</code> | Boolean | When <code>true</code>, enables interactive keyboard dismiss (swipe to dismiss). Default: <code>false</code>. |</p>
+
+<h3><code>showKeyboardOnScrollUp</code> (default: <code>false</code>, iOS and Android)</h3>
+
+<p>When <code>true</code>, overscrolling upward at the bottom of the scroll view (pulling content up past the last item) will show the keyboard if it&#39;s currently hidden. This provides a &quot;pull-to-refresh at the bottom&quot; style interaction.</p>
+
+<p><strong>iOS behavior:</strong> Uses a <code>UIScrollViewDelegate</code> proxy to detect when the user is dragging and has scrolled to or past the bottom. When detected, <code>becomeFirstResponder</code> is called on the text field/text view. The proxy transparently forwards all other delegate calls to Titanium&#39;s original delegate.</p>
+
+<p><strong>Android behavior:</strong> Uses <code>WindowInsetsAnimation</code> and nested scrolling APIs to progressively reveal the keyboard as the user drags up.</p>
+
+<p><strong>Conditions for triggering (iOS):</strong>
+1. <code>showKeyboardOnScrollUp</code> is <code>true</code>
+2. User is actively dragging (not programmatic scroll)
+3. One-shot per drag gesture (resets on next drag start or keyboard hide)
+4. Keyboard is not currently visible
+5. Content offset is at or past the bottom of scrollable content
+6. Content is scrollable (<code>contentSize.height &gt; frame.size.height</code>)</p>
+
+<h2>Layout Mode Properties</h2>
+
+<p>These two properties control how the scroll view and toolbar relate to each other when the keyboard appears. They are mutually exclusive: if <code>autoSizeAndKeepScrollingViewAboveToolbar</code> is set to <code>true</code>, <code>autoAdjustBottomPadding</code> is forced to <code>false</code>.</p>
+
+<h3><code>autoAdjustBottomPadding</code> (default: <code>false</code>)</h3>
+
+<p>When <code>true</code>, the scroll view keeps its full height and its <code>contentInset.bottom</code> is increased so content can scroll <strong>behind</strong> the toolbar. The toolbar overlays the scroll content (useful with translucent/blur toolbars where content is visible underneath).</p>
+
+<p><strong>How it works:</strong></p>
+
+<ol><li><strong>Initial setup</strong>: Before the keyboard appears, <code>contentInset.bottom</code> is set to <code>currentInset + toolbarHeight</code>. If <code>extendSafeArea</code> is true, a correction is applied to avoid double-counting the safe area.</li><li><strong>During keyboard show/hide</strong>: <code>contentInset.bottom</code> is dynamically updated to <code>translation + toolbarHeight</code>, where <code>translation</code> is the toolbar&#39;s vertical offset from its resting position. This keeps scroll content accessible above the keyboard.</li><li><strong>When keyboard is hidden</strong>: <code>contentInset.bottom</code> returns to its initial value (safe area inset only).</li></ol>
+
+<p>Use this mode when you want a translucent or blurred toolbar where the scroll content peeks through underneath.</p>
+
+<h3><code>autoSizeAndKeepScrollingViewAboveToolbar</code> (default: <code>false</code>)</h3>
+
+<p>When <code>true</code>, the scroll view <strong>physically resizes</strong> via its <code>bottom</code> layout constraint so it always sits above the toolbar. Content never scrolls behind the toolbar — the scroll view ends where the toolbar begins.</p>
+
+<p><strong>How it works:</strong></p>
+
+<ol><li><strong>Initial setup</strong>: The scroll view&#39;s <code>bottom</code> constraint is set to <code>initialScrollingViewBottomValue + toolbarHeight</code>.</li><li><strong>During keyboard show/hide</strong>: The <code>bottom</code> constraint is updated to <code>initialScrollingViewBottomValue + toolbarHeight + translation</code>. The scroll view shrinks as the keyboard appears and grows as it dismisses.</li><li><strong>Content inset is NOT modified</strong> — <code>applyScrollViewInset:</code> is skipped entirely in this mode.</li><li><strong>When keyboard is hidden</strong>: The <code>bottom</code> constraint returns to <code>initialScrollingViewBottomValue + toolbarHeight</code>.</li></ol>
+
+<p>Use this mode when you want opaque toolbars or need scroll content to never appear behind the input bar.</p>
+
+<h3>Comparison</h3>
+
+<p>| Aspect | <code>autoAdjustBottomPadding: true</code> | <code>autoSizeAndKeepScrollingViewAboveToolbar: true</code> |
+|---|---|---|
+| Scroll view height | Stays full-screen | Shrinks above toolbar |
+| Layout mechanism | <code>contentInset.bottom</code> | <code>bottom</code> layout constraint |
+| Content behind toolbar | Yes (visible through translucent toolbar) | No (scroll view ends above toolbar) |
+| Use case | Blur/translucent toolbars | Opaque toolbars, chat-style layouts |
+| <code>autoScrollToBottom</code> target | Scrolls to bottom of content including inset | Scrolls to bottom of resized scroll view |</p>
+
+<h2>Behavior Properties</h2>
+
+<h3><code>autoScrollToBottom</code> (default: <code>false</code>)</h3>
+
+<p>When <code>true</code>, the scroll view automatically scrolls to the bottom when:
+- The keyboard appears
+- The toolbar resizes (e.g., multi-line text input grows)
+- Interactive keyboard dismiss settles</p>
+
+<p>The scroll animation is synchronized with the keyboard animation curve for smooth visual transitions.</p>
+
+<p><strong>Behavior per layout mode:</strong>
+- With <code>autoAdjustBottomPadding</code>: scrolls to <code>contentSize.height - frame.height + contentInset.bottom + safeAreaInsets.bottom</code>
+- With <code>autoSizeAndKeepScrollingViewAboveToolbar</code>: scrolls to <code>contentSize.height - frame.height + translation + toolbarHeight + safeAreaInsets.bottom</code></p>
+
+<h3><code>ignoreExtendSafeArea</code> (default: <code>false</code>, iOS only)</h3>
+
+<p>Only relevant when the parent window has <code>extendSafeArea: true</code> and is a standalone window (not contained in a NavigationWindow or TabGroup — the module auto-detects this).</p>
+
+<p>| <code>ignoreExtendSafeArea</code> | Behavior |
+|---|---|
+| <code>false</code> (default) | The toolbar is shifted up by the safe area bottom inset so it sits above the home indicator area. Content inset accounts for this. |
+| <code>true</code> | The toolbar extends into the safe area (home indicator area). Content inset is not reduced by the safe area padding. |</p>
+
+<p><strong>Note:</strong> The module auto-detects whether the window is inside a NavigationWindow or TabGroup. If the window is inside a TabGroup, <code>extendSafeArea</code> handling is adjusted automatically regardless of this property.</p>
+
+<h2>Window Context Detection</h2>
+
+<p>The module automatically detects the window hierarchy:</p>
+
+<p>| Context | Detected as | Behavior |
+|---|---|---|
+| Standalone window | Neither TabGroup nor NavigationWindow | Standard safe area handling |
+| Inside TabGroup | <code>isTabGroup = true</code> | Toolbar position accounts for tab bar height. <code>tabBarHidden</code> is re-evaluated dynamically when the keyboard appears, so switching between tabs with different visibility states works correctly. |
+| Inside NavigationWindow | <code>isNavigationWindow = true</code> | Adjusts for navigation bar and safe area offsets |
+| NavigationWindow + TabGroup | Both flags true | Mode-aware translation: <code>autoSizeAndKeepScrollingViewAboveToolbar</code> subtracts <code>bottomPadding</code> from the tab bar height to avoid double-counting the safe area, while <code>autoAdjustBottomPadding</code> uses the full tab bar height because <code>contentInset</code> handles the safe area offset differently. |</p>
+
+<p>The detected context affects:
+- Toolbar translation calculation (TabGroup windows have a tab bar offset; NavWindow+TabGroup uses mode-aware offsets)
+- Safe area handling (NavigationWindow manages safe area differently)
+- Content inset corrections</p>
+
+<h2>Cross-Tab Safety</h2>
+
+<p>When using TabGroups with multiple tabs, each containing its own <code>keyboardControlModule.createView()</code>, the module correctly isolates state per proxy instance:</p>
+
+<ul><li>Keyboard notification handlers (<code>keyboardWillShow</code>, <code>keyboardDidShow</code>, <code>keyboardWillHide</code>, <code>keyboardDidHide</code>) check whether this proxy&#39;s text field is the first responder before applying changes</li><li><code>keyboardDidHide</code> guards against resetting an inactive tab&#39;s scroll view</li><li>KVO callbacks are per-instance (each text field has its own input accessory view)</li></ul>
+
+<p>This prevents switching tabs from corrupting the inactive tab&#39;s scroll view layout.</p>
+
+<h2>Examples</h2>
+
+<h3>TabGroup with Two Layout Modes</h3>
+
+<p><code></code>`javascript
+var ANDROID = (Ti.Platform.osname === &#39;android&#39;);
+var keyboardControlModule = require(&#39;de.marcbender.keyboardcontrol&#39;);</p>
+
+<p>var tabGroup = Ti.UI.createTabGroup();
+tabGroup.addTab(createTab(&#39;AutoAdjustBottomPadding&#39;, &#39;&#39;, &#39;assets/images/tab1.png&#39;));
+tabGroup.addTab(createTab(&#39;KeepScrollingViewAbove&#39;, &#39;&#39;, &#39;assets/images/tab2.png&#39;));</p>
+
+<p>var navigationWindow = Ti.UI.createNavigationWindow({ window: tabGroup });
+navigationWindow.open();</p>
+
+<p>function createTab(title, message, icon) {
+    var win = Ti.UI.createWindow({
+        title: &#39;Test&#39;,
+        barColor: &#39;#365b85&#39;,
+        backgroundColor: &#39;#fff&#39;,
+        extendSafeArea: false,
+        sustainedPerformanceMode: true
+    });</p>
+
+<pre><code>var tableView = Ti.UI.createTableView({
+    data: [/* your data */],
+    top: 0, bottom: 0,
+    width: Ti.UI.FILL, height: Ti.UI.FILL
+});
+
+var toolbarContainer = Ti.UI.createView({
+    backgroundColor: &#39;#aa2f53c3&#39;,
+    width: Ti.UI.FILL, height: Ti.UI.SIZE, bottom: 0
+});
+
+var toolbarView = Ti.UI.createView({
+    backgroundColor: (title === &#39;KeepScrollingViewAbove&#39;) ? &#39;blue&#39; : &#39;red&#39;,
+    layout: &#39;horizontal&#39;,
+    width: Ti.UI.FILL, height: Ti.UI.SIZE,
+    bottom: 5, top: 5
+});
+toolbarContainer.add(toolbarView);
+
+var textArea = Ti.UI.createTextArea({
+    top: 8, bottom: 8, left: 15, right: 8,
+    autocorrect: false, editable: true,
+    borderWidth: 1, borderColor: &#39;#aaa&#39;, borderRadius: 16,
+    color: &#39;#000&#39;, backgroundColor: &#39;#fff&#39;,
+    font: { fontSize: 16, fontWeight: &#39;bold&#39; },
+    textAlign: &#39;left&#39;, value: &#39;&#39;,
+    width: &#39;70%&#39;, height: Ti.UI.SIZE,
+    suppressReturn: false
+});
+
+var sendButton = Ti.UI.createButton({
+    title: &#39;Send&#39;,
+    style: Ti.UI.BUTTON_STYLE_FILLED,
+    backgroundColor: &#39;blue&#39;, tintColor: &#39;#fff&#39;,
+    borderRadius: 12, width: Ti.UI.FILL, right: 10,
+    bottom: ANDROID ? 5 : 10
+});
+
+toolbarView.add(textArea);
+toolbarView.add(sendButton);
+
+if (ANDROID) {
+    var interactiveKeyboardView = keyboardControlModule.createView({
+        showKeyboardOnScrollUp: true,
+        autoAdjustBottomPadding: (title !== &#39;KeepScrollingViewAbove&#39;),
+        autoScrollToBottom: true,
+        autoSizeAndKeepScrollingViewAboveToolbar: (title === &#39;KeepScrollingViewAbove&#39;),
+        scrollingView: tableView,
+        toolbarView: toolbarContainer,
+        backgroundColor: &#39;#fefefe&#39;,
+        top: 0, bottom: 0
+    });
+    win.add(interactiveKeyboardView);
+} else {
+    var interactiveKeyboardView = keyboardControlModule.createView({
+        parentWindow: win,
+        autoAdjustBottomPadding: (title !== &#39;KeepScrollingViewAbove&#39;),
+        autoScrollToBottom: true,
+        autoSizeAndKeepScrollingViewAboveToolbar: (title === &#39;KeepScrollingViewAbove&#39;),
+        ignoreExtendSafeArea: false,
+        scrollingView: tableView,
+        toolbarView: toolbarContainer,
+        textfield: textArea,
+        keyboardPanning: true,
+        backgroundColor: &#39;#fefefe&#39;,
+        top: 0, bottom: 0
+    });
+    win.add(interactiveKeyboardView);
+}
+
+return Ti.UI.createTab({ title: title, icon: icon, window: win });</code></pre>
+
+<p>}
+<code></code>`</p>
+
+<h3>Standalone Window with AutoAdjustBottomPadding (Translucent Toolbar)</h3>
+
+<p><code></code>`javascript
+var win = Ti.UI.createWindow({ backgroundColor: &#39;#fff&#39;, extendSafeArea: false });</p>
+
+<p>var tableView = Ti.UI.createTableView({
+    data: [/<em> your data </em>/],
+    top: 0, bottom: 0,
+    width: Ti.UI.FILL, height: Ti.UI.FILL
+});</p>
+
+<p>var toolbarContainer = Ti.UI.createView({
+    backgroundColor: &#39;#aa2f53c3&#39;, // translucent
+    width: Ti.UI.FILL, height: Ti.UI.SIZE, bottom: 0
+});</p>
+
+<p>var textArea = Ti.UI.createTextArea({
+    top: 8, bottom: 8, left: 15, right: 8,
+    width: &#39;70%&#39;, height: Ti.UI.SIZE
+});</p>
+
+<p>var sendButton = Ti.UI.createButton({ title: &#39;Send&#39;, width: Ti.UI.FILL, right: 10 });</p>
+
+<p>var toolbarInner = Ti.UI.createView({ layout: &#39;horizontal&#39;, width: Ti.UI.FILL, height: Ti.UI.SIZE });
+toolbarInner.add(textArea);
+toolbarInner.add(sendButton);
+toolbarContainer.add(toolbarInner);</p>
+
+<p>var interactiveKeyboardView = keyboardControlModule.createView({
+    parentWindow: win,
+    autoAdjustBottomPadding: true,
+    autoSizeAndKeepScrollingViewAboveToolbar: false,
+    autoScrollToBottom: true,
+    scrollingView: tableView,
+    toolbarView: toolbarContainer,
+    textfield: textArea,
+    keyboardPanning: true,
+    top: 0, bottom: 0
+});</p>
+
+<p>win.add(interactiveKeyboardView);
+win.open();
+<code></code>`</p>
+
+<h3>Standalone Window with AutoSize (Opaque Toolbar)</h3>
+
+<p><code></code>`javascript
+var win = Ti.UI.createWindow({ backgroundColor: &#39;#fff&#39;, extendSafeArea: false });</p>
+
+<p>var tableView = Ti.UI.createTableView({
+    data: [/<em> your data </em>/],
+    top: 0, bottom: 0,
+    width: Ti.UI.FILL, height: Ti.UI.FILL
+});</p>
+
+<p>var toolbarContainer = Ti.UI.createView({
+    backgroundColor: &#39;#ffffff&#39;, // opaque
+    width: Ti.UI.FILL, height: Ti.UI.SIZE, bottom: 0
+});</p>
+
+<p>var textArea = Ti.UI.createTextArea({
+    top: 8, bottom: 8, left: 15, right: 8,
+    width: &#39;70%&#39;, height: Ti.UI.SIZE
+});</p>
+
+<p>var sendButton = Ti.UI.createButton({ title: &#39;Send&#39;, width: Ti.UI.FILL, right: 10 });</p>
+
+<p>var toolbarInner = Ti.UI.createView({ layout: &#39;horizontal&#39;, width: Ti.UI.FILL, height: Ti.UI.SIZE });
+toolbarInner.add(textArea);
+toolbarInner.add(sendButton);
+toolbarContainer.add(toolbarInner);</p>
+
+<p>var interactiveKeyboardView = keyboardControlModule.createView({
+    parentWindow: win,
+    autoAdjustBottomPadding: false,
+    autoSizeAndKeepScrollingViewAboveToolbar: true,
+    autoScrollToBottom: true,
+    scrollingView: tableView,
+    toolbarView: toolbarContainer,
+    textfield: textArea,
+    keyboardPanning: true,
+    top: 0, bottom: 0
+});</p>
+
+<p>win.add(interactiveKeyboardView);
+win.open();
+<code></code>`</p>
+
+<h2>Author</h2>
+
+<p>Marc Bender</p>
+
+<h2>License</h2>
+
+<p>GNU Lesser General Public License v2.1</p>
