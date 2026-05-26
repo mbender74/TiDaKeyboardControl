@@ -1942,6 +1942,24 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     }
 }
 
+- (void)setParentWindow:(TiViewProxy *)parentWindow
+{
+    ENSURE_UI_THREAD(setParentWindow, parentWindow);
+    if (!parentWindow) {
+        NSLog(@"[TiDAKBC] ERROR: parentWindow is required on iOS. Cannot be nil.");
+    }
+    _parentWindow = parentWindow;
+}
+
+- (void)setTextfield:(TiViewProxy *)textfield
+{
+    ENSURE_UI_THREAD(setTextfield, textfield);
+    if (!textfield) {
+        NSLog(@"[TiDAKBC] ERROR: textfield is required on iOS. Cannot be nil.");
+    }
+    _textfield = textfield;
+}
+
 - (void)installScrollDelegateProxy
 {
     if (!nativeScrollView || !showKeyboardOnScrollUp) return;
