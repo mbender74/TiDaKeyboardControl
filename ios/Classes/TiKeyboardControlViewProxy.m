@@ -1507,9 +1507,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             // Calculate delay: toolbar starts when keyboard reaches its level
             CGFloat delayRatio = (keyboardDistance > 0) ? (keyboardDistance - toolbarDistance) / keyboardDistance : 0;
             CGFloat delay = keyboardTransitionDuration * MAX(0, delayRatio) * 0.5;  // 50% des Verhältnisses
+            CGFloat toolbarDuration = keyboardTransitionDuration - delay;  // Kürzere duration
             
             __strong TiKeyboardControlViewProxy *strongSelf = self;
-            [UIView animateWithDuration:keyboardTransitionDuration
+            [UIView animateWithDuration:toolbarDuration
                                     delay:delay
                         usingSpringWithDamping:0.8
                               initialSpringVelocity:0.0
@@ -1520,8 +1521,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             } completion:^(BOOL finished) {
                 NSLog(@"[TOOLBAR] Anim complete: finalTransform.ty=%.1f", strongSelf->toolbarview.layer.affineTransform.ty);
             }];
-            NSLog(@"[TOOLBAR] Spring anim: toolbarDist=%.1f keyboardDist=%.1f delay=%.3fs duration=%fs", 
-                  toolbarDistance, keyboardDistance, delay, keyboardTransitionDuration);
+            NSLog(@"[TOOLBAR] Spring anim: toolbarDist=%.1f keyboardDist=%.1f delay=%.3fs duration=%.3fs", 
+                  toolbarDistance, keyboardDistance, delay, toolbarDuration);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
