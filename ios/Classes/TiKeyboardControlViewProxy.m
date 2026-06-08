@@ -797,6 +797,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                     [CATransaction setDisableActions:YES];
                     strongSelf->toolbarview.layer.affineTransform = newTransform;
                     [CATransaction commit];
+                    NSLog(@"[TiDAKBC] SPRING-KVO | CALayer update: deltaY=%f, newTy=%f", deltaY, newTy);
                 }
 
                 // Update autoSize bottom constraint to follow swipe (skip if value unchanged)
@@ -1414,6 +1415,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             [self applyToolbarTranslation:trans
                                     animated:YES duration:keyboardTransitionDuration
                                        curve:self->animationCurve];
+            NSLog(@"[TiDAKBC] SPRING | UIView animation: trans=%f, duration=%f", trans, keyboardTransitionDuration);
+        } else {
+            NSLog(@"[TiDAKBC] SPRING | Skipping UIView anim, KVO will track: trans=%f, initialAccY=%f", trans, self->initialAccessoryViewFrame.origin.y);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
