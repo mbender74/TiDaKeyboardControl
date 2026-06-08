@@ -1430,7 +1430,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         NSLog(@"[TiDAKBC] SPRING | Updating initialAcc: from {{%f,%f}} to {{%f,%f}}",
               self->initialAccessoryViewFrame.origin.x, self->initialAccessoryViewFrame.origin.y,
               lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y);
-        self->initialAccessoryViewFrame = lastInputAccessoryViewFrame;
+        // Keep old baseline during spring animation so KVO deltas are correct
+        if (!isSpringAnimation) {
+            self->initialAccessoryViewFrame = lastInputAccessoryViewFrame;
+        }
         //         NSLog(@"[TiDAKBC] keyboardWillShow | keyboard switch: updated initialAccessoryViewFrame to {{%f,%f},{%f,%f}}",
         //               lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
         //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
