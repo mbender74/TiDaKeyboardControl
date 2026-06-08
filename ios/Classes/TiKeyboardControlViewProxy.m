@@ -1377,27 +1377,13 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         }
     }
     
-    // Animate toolbar with spring interpolation using UIView
+    // Log toolbar animation start
     {
         CGFloat targetTrans = [self computeToolbarTranslation:lastInputAccessoryViewFrame];
         CGFloat currentTrans = toolbarview.layer.affineTransform.ty;
         
-        NSLog(@"[TOOLBAR] Start anim: currentTrans=%.1f targetTrans=%.1f delta=%.1f", 
-              currentTrans, targetTrans, targetTrans - currentTrans);
-        
-        // Use UIView spring animation to match keyboard
-        __strong TiKeyboardControlViewProxy *strongSelf = self;
-        [UIView animateWithDuration:keyboardTransitionDuration
-                                delay:0.0
-                    usingSpringWithDamping:0.55
-                          initialSpringVelocity:0.0
-                                        options:UIViewAnimationOptionBeginFromCurrentState
-                                     animations:^{
-            CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, -targetTrans);
-            strongSelf->toolbarview.layer.affineTransform = newTransform;
-        } completion:^(BOOL finished) {
-            NSLog(@"[TOOLBAR] Anim complete: finalTransform.ty=%.1f", strongSelf->toolbarview.layer.affineTransform.ty);
-        }];
+        NSLog(@"[TOOLBAR] Start anim: currentTrans=%.1f targetTrans=%.1f duration=%fs", 
+              currentTrans, targetTrans, keyboardTransitionDuration);
     }
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
@@ -1512,15 +1498,21 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         //         NSLog(@"[TiDAKBC] keyboardWillShow | apply translation=%f, lastAcc={{%f,%f},{%f,%f}}",
         //               trans, lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
         //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
-        // For spring animation (swipe completion), skip UIView animation and let KVO callbacks
-        // track the keyboard position with direct CALayer updates for perfect sync.
-        if (!isSpringAnimation) {
-            [self applyToolbarTranslation:trans
-                                    animated:YES duration:keyboardTransitionDuration
-                                       curve:self->animationCurve];
-            NSLog(@"[KVO-TRACK] UIView anim: targetTrans=%.1f", trans);
-        } else {
-            NSLog(@"[KVO-TRACK] SPRING: KVO will track, targetTrans=%.1f", trans);
+        // Animate toolbar with spring physics to match keyboard
+        {
+            __strong TiKeyboardControlViewProxy *strongSelf = self;
+            [UIView animateWithDuration:keyboardTransitionDuration
+                                    delay:0.0
+                        usingSpringWithDamping:0.55
+                              initialSpringVelocity:0.0
+                                            options:UIViewAnimationOptionBeginFromCurrentState
+                                         animations:^{
+                CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, -trans);
+                strongSelf->toolbarview.layer.affineTransform = newTransform;
+            } completion:^(BOOL finished) {
+                NSLog(@"[TOOLBAR] Anim complete: finalTransform.ty=%.1f", strongSelf->toolbarview.layer.affineTransform.ty);
+            }];
+            NSLog(@"[TOOLBAR] Spring anim: targetTrans=%.1f duration=%fs damping=0.55", trans, keyboardTransitionDuration);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
