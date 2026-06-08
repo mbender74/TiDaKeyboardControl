@@ -797,7 +797,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                     [CATransaction setDisableActions:YES];
                     strongSelf->toolbarview.layer.affineTransform = newTransform;
                     [CATransaction commit];
-                    NSLog(@"[TiDAKBC] SPRING-KVO | CALayer update: deltaY=%f, newTy=%f", deltaY, newTy);
                 }
 
                 // Update autoSize bottom constraint to follow swipe (skip if value unchanged)
@@ -1293,10 +1292,13 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     self->animationCurve = [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
     [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
 
-    // iOS keyboard uses spring physics. Let KVO track the actual position
-    // with direct CALayer updates - no UIView animation needed.
-    BOOL isSpringAnimation = YES;
-    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: KVO tracking, duration=%f", keyboardTransitionDuration);
+    // Detect spring animation (swipe completion) — iOS reports duration > 0 but the actual
+    // animation is a spring physics curve that doesn't match any UIViewAnimationCurve.
+    // In this case, let KVO callbacks handle the toolbar tracking with direct CALayer updates
+    // instead of using a fixed UIView animation that will desync from the keyboard.
+    // Also detect first keyboard show (initialAcc is NULL) — iOS may use spring physics.
+    BOOL isSpringAnimation = (keyboardVisible || CGRectIsNull(self->initialAccessoryViewFrame));
+    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, duration=%f", isSpringAnimation, keyboardTransitionDuration);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
@@ -1410,15 +1412,12 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         //         NSLog(@"[TiDAKBC] keyboardWillShow | apply translation=%f, lastAcc={{%f,%f},{%f,%f}}",
         //               trans, lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
         //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
-        // Let KVO track the keyboard position with direct CALayer updates.
-        // No UIView animation needed - KVO fires at 120Hz on ProMotion displays.
+        // For spring animation (swipe completion), skip UIView animation and let KVO callbacks
+        // track the keyboard position with direct CALayer updates for perfect sync.
         if (!isSpringAnimation) {
             [self applyToolbarTranslation:trans
                                     animated:YES duration:keyboardTransitionDuration
                                        curve:self->animationCurve];
-            NSLog(@"[TiDAKBC] SPRING | UIView animation: trans=%f, duration=%f", trans, keyboardTransitionDuration);
-        } else {
-            NSLog(@"[TiDAKBC] SPRING | KVO tracking: trans=%f", trans);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
@@ -1428,16 +1427,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // Update it to the new position so swipe deltas are computed correctly.
     // BUT: Don't update during spring animation — KVO needs the old baseline for delta tracking.
     if (keyboardVisible && !CGRectIsEmpty(lastInputAccessoryViewFrame)) {
-        NSLog(@"[TiDAKBC] SPRING | Updating initialAcc: from {{%f,%f}} to {{%f,%f}}",
-              self->initialAccessoryViewFrame.origin.x, self->initialAccessoryViewFrame.origin.y,
-              lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y);
         // Keep old baseline during spring animation so KVO deltas are correct
         if (!isSpringAnimation) {
             self->initialAccessoryViewFrame = lastInputAccessoryViewFrame;
         }
-        //         NSLog(@"[TiDAKBC] keyboardWillShow | keyboard switch: updated initialAccessoryViewFrame to {{%f,%f},{%f,%f}}",
-        //               lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
-        //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
     }
 
     // Clear the flag at the end of keyboardWillShow regardless of which path was taken
