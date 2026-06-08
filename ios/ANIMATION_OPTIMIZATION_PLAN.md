@@ -246,23 +246,23 @@ displayLink.paused = NO;
 
 ## Implementation Priority
 
-### Phase 1: Quick Wins (1-2 days)
-1. ✅ Animation curve synchronization (already done)
-2. Add transform update deduplication
-3. Cache last applied inset values
-4. Cancel pending scroll animations before new ones
+### Phase 1: Quick Wins (1-2 days) ✅ DONE
+1. ✅ Animation curve synchronization (bereits vorher gemacht)
+2. ✅ Transform update deduplication (`_isAnimatingToolbar` flag in `applyToolbarTranslation:`)
+3. ✅ Cache last applied inset values (`_cachedContentInsetBottom` in `applyScrollViewInset:`)
+4. ✅ Cancel pending scroll animations ([sv.layer removeAllAnimations] in `scrollToBottomIfNeeded`)
 
 ### Phase 2: Medium Effort (3-5 days)
-1. Direct CALayer tracking during swipe (Phase 2 from ANIMATION_SYNC_PLAN.md)
-2. Make Android interpolator configurable
-3. Single callback registration for Android
-4. Animation frame synchronization
+1. ✅ Android interpolator konfigurierbar machen (`setAnimationCurve()` mit EASE_IN_OUT/EASE_IN/EASE_OUT/LINEAR)
+2. Direct CALayer tracking during swipe (Phase 2 from ANIMATION_SYNC_PLAN.md) — **nicht implementiert**
+3. Single callback registration for Android — **nicht implementiert**
+4. Animation frame synchronization — **nicht implementiert**
 
 ### Phase 3: Advanced Optimizations (5-7 days)
-1. CADisplayLink-based synchronized updates
-2. Memory optimization in animation loops
-3. Performance testing and profiling
-4. Visual debugging tools
+1. CADisplayLink-based synchronized updates — **nicht implementiert**
+2. Memory optimization in animation loops — **nicht implementiert**
+3. Performance testing and profiling — **nicht implementiert**
+4. Visual debugging tools — **nicht implementiert**
 
 ---
 
@@ -285,6 +285,9 @@ displayLink.paused = NO;
 
 ## Success Criteria
 
+- [x] iOS: Transform deduplication implemented (redundant updates skipped)
+- [x] iOS: Content inset caching implemented (skips < 1.0 threshold changes)
+- [x] Android: Interpolator configurable via `setAnimationCurve()`
 - [ ] All animations run at 60fps minimum on iPhone 8 / Android API 21
 - [ ] CPU usage < 15% during keyboard animations
 - [ ] Zero visible janks in test scenarios
@@ -299,3 +302,28 @@ displayLink.paused = NO;
 - [Android WindowInsetsAnimation](https://developer.android.com/reference/android/view/WindowInsetsAnimation)
 - [CADisplayLink Documentation](https://developer.apple.com/documentation/quartzcore/cadisplaylink)
 - [SpringAnimation Guide](https://developer.android.com/reference/androidx/dynamicanimation.animation.SpringAnimation)
+
+---
+
+## Validation Summary (2025-06-08)
+
+### Implemented & Verified ✅
+| Optimierung | iOS | Android | Status |
+|-------------|-----|---------|--------|
+| Transform deduplication | `_isAnimatingToolbar` flag | — | ✅ Compiliert, getestet |
+| Content inset caching | `_cachedContentInsetBottom` (< 1.0 threshold) | — | ✅ Compiliert, getestet |
+| Scroll animation cancellation | `[sv.layer removeAllAnimations]` | — | ✅ Compiliert, getestet |
+| Configurable interpolator | — | `setAnimationCurve()` mit 4 curves | ✅ Implementiert |
+
+### Noch offen 🔧
+| Optimierung | Priorität | Aufwand |
+|-------------|-----------|----------|
+| Direct CALayer swipe tracking | Medium | 1-2 Tage |
+| Single callback registration (Android) | Medium | 1 Tag |
+| Animation frame synchronization | High | 2-3 Tage |
+| CADisplayLink updates | Low | 1 Tag |
+| Performance testing & profiling | High | 2-3 Tage |
+
+### Kompilierung ✅
+- iOS Module: `de.marcbender.keyboardcontrol-iphone-2.1.4.zip` erfolgreich gebaut
+- Alle 3 Targets (iPhone OS, Simulator, Mac Catalyst) ohne Errors/Warnings kompiliert
