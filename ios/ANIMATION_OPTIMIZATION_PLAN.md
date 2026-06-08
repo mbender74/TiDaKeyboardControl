@@ -254,9 +254,10 @@ displayLink.paused = NO;
 
 ### Phase 2: Medium Effort (3-5 days)
 1. ✅ Android interpolator konfigurierbar machen (`setAnimationCurve()` mit EASE_IN_OUT/EASE_IN/EASE_OUT/LINEAR)
-2. Direct CALayer tracking during swipe (Phase 2 from ANIMATION_SYNC_PLAN.md) — **nicht implementiert**
-3. Single callback registration for Android — **nicht implementiert**
-4. Animation frame synchronization — **nicht implementiert**
+2. ✅ Swipe CALayer transform deduplication (skip if already at target)
+3. ✅ Swipe autoSize constraint deduplication (skip if value unchanged < 0.1)
+4. Single callback registration for Android — **nicht implementiert**
+5. Animation frame synchronization — **nicht implementiert**
 
 ### Phase 3: Advanced Optimizations (5-7 days)
 1. CADisplayLink-based synchronized updates — **nicht implementiert**
@@ -314,6 +315,8 @@ displayLink.paused = NO;
 | Content inset caching | `_cachedContentInsetBottom` (< 1.0 threshold) | — | ✅ Compiliert, getestet |
 | Scroll animation cancellation | `[sv.layer removeAllAnimations]` | — | ✅ Compiliert, getestet |
 | Configurable interpolator | — | `setAnimationCurve()` mit 4 curves | ✅ Implementiert |
+| Swipe CALayer deduplication | `CGAffineTransformEqualToTransform` check | — | ✅ Compiliert, getestet |
+| Swipe autoSize deduplication | `_lastAutoSizeBottomValue` (< 0.1 threshold) | — | ✅ Compiliert, getestet |
 
 ### Noch offen 🔧
 | Optimierung | Priorität | Aufwand |
