@@ -1,7 +1,9 @@
-# TiDaKeyboardControl
+# TiDaKeyboardControl Titanium Mobile SDK Module for iOS and Android
+(https://titaniumsdk.com)
+
 ## de.marcbender.keyboardcontrol
 
-Titanium module for interactive keyboard dismiss for iOS and Android (from API level 30+ / Android 11).
+Titanium Mobile SDK module for interactive keyboard dismiss for iOS and Android (from API level 30+ / Android 11).
 
 iOS was mostly rewritten for iOS 16+ compatibility with smooth 120Hz keyboard tracking.
 
