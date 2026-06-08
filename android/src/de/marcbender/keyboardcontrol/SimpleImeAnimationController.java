@@ -19,6 +19,10 @@ package de.marcbender.keyboardcontrol;
 import android.os.CancellationSignal;
 import android.util.Log;
 import android.view.View;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
+import android.view.animation.Interpolator;
 import android.view.animation.LinearInterpolator;
 
 import androidx.annotation.NonNull;
@@ -64,9 +68,22 @@ public class SimpleImeAnimationController {
     private WindowInsetsAnimationControlListenerCompat fwdListener;
 
     /**
-     * A LinearInterpolator instance we can re-use across listeners.
+     * Animation curve constants matching Titanium's animation curves
      */
-    private final LinearInterpolator linearInterpolator = new LinearInterpolator();
+    public static final int ANIMATION_CURVE_EASE_IN_OUT = 0;
+    public static final int ANIMATION_CURVE_EASE_IN = 1;
+    public static final int ANIMATION_CURVE_EASE_OUT = 2;
+    public static final int ANIMATION_CURVE_LINEAR = 3;
+    
+    /**
+     * Current interpolator to use for animations
+     */
+    private Interpolator interpolator = new LinearInterpolator();
+    
+    /**
+     * A LinearInterpolator instance we can re-use across listeners as default.
+     */
+    private final LinearInterpolator defaultLinearInterpolator = new LinearInterpolator();
     /* To take control of the an WindowInsetsAnimation, we need to pass in a listener to
        controlWindowInsetsAnimation() in startControlRequest(). The listener created here
        keeps track of the current WindowInsetsAnimationController and resets our state. */
@@ -144,9 +161,8 @@ public class SimpleImeAnimationController {
                     -1,
                     // The time interpolator used in calculating the animation progress. The fraction value
                     // we passed into setInsetsAndAlpha() which be passed into this interpolator before
-                    // being used by the system to inset the IME. LinearInterpolator is a good type
-                    // to use for scrolling gestures.
-                    linearInterpolator,
+                    // being used by the system to inset the IME.
+                    interpolator,
                     // A cancellation signal, which allows us to cancel the request to control
                     pendingRequestCancellationSignal,
                     // The WindowInsetsAnimationControlListener
@@ -435,6 +451,29 @@ public class SimpleImeAnimationController {
 
     public void setAnimationControlListener(final WindowInsetsAnimationControlListenerCompat listener) {
         fwdListener = listener;
+    }
+
+    /**
+     * Set the animation interpolator to use for IME animations.
+     * 
+     * @param curve The animation curve constant (ANIMATION_CURVE_*)
+     */
+    public void setAnimationCurve(int curve) {
+        switch (curve) {
+            case ANIMATION_CURVE_EASE_IN_OUT:
+                interpolator = new AccelerateDecelerateInterpolator();
+                break;
+            case ANIMATION_CURVE_EASE_IN:
+                interpolator = new AccelerateInterpolator();
+                break;
+            case ANIMATION_CURVE_EASE_OUT:
+                interpolator = new DecelerateInterpolator();
+                break;
+            case ANIMATION_CURVE_LINEAR:
+            default:
+                interpolator = defaultLinearInterpolator;
+                break;
+        }
     }
 
     public interface OnRequestReadyListener {

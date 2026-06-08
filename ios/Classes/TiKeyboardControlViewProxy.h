@@ -130,6 +130,9 @@
 @property (nonatomic, assign) CGRect lastKVOFrame;
 /* Performance: cached autoSize bottom value to skip refreshView when unchanged (#B, #E) */
 @property (nonatomic, assign) CGFloat lastAutoSizeBottomValue;
+/* Performance: animation state tracking for deduplication */
+@property (nonatomic, assign) BOOL isAnimatingToolbar;
+@property (nonatomic, assign) CGFloat cachedContentInsetBottom;
 
 
 

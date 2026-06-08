@@ -121,6 +121,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         settledShift = 0;
         hasSettledShift = NO;
         keyboardInsetSettled = NO;
+        isAnimatingToolbar = NO;
+        cachedContentInsetBottom = 0.0;
     }
 
     return self;
@@ -1609,15 +1611,24 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         // weil CALayer.affineTransform innerhalb von UIView.animate
         // smooth animiert wird (keine Konflikte mehr!)
         NSTimeInterval animDuration = _manualPanning ? 0 : duration;
+        // Cancel any existing animation to prevent queue buildup
+        if (_isAnimatingToolbar) {
+            [toolbarview.layer removeAllAnimations];
+        }
+        _isAnimatingToolbar = YES;
+        
         [UIView animateWithDuration:animDuration
                               delay:0
                             options:(curve << 16) | UIViewAnimationOptionBeginFromCurrentState
                          animations:^{
             toolbarview.layer.affineTransform = transform;
-        } completion:nil];
+        } completion:^(BOOL finished) {
+            _isAnimatingToolbar = NO;
+        }];
     } else {
         // Instant: CALayer direkt setzen, in-flight animations entfernen
         [toolbarview.layer removeAllAnimations];
+        _isAnimatingToolbar = NO;
         [CATransaction begin];
         [CATransaction setDisableActions:YES];
         toolbarview.layer.affineTransform = transform;
@@ -1669,19 +1680,25 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         bottomInset -= bottomPadding;
     }
 
-    CGFloat oldBottom = nativeScrollView.contentInset.bottom;
+    /* Performance: skip update if inset hasn't changed significantly */
+    if (fabs(bottomInset - _cachedContentInsetBottom) < 1.0) {
+        return;
+    }
+    
     //     NSLog(@"[TiDAKBC] applyScrollViewInset | REASON=inset-update accFrame={{%f,%f},{%f,%f}} translation=%f toolbarH=%f keyboardVis=%d hasSettled=%d manualResize=%d extendSafeArea=%d ignoreExtend=%d oldBottom=%.0f newBottom=%.0f delta=%.0f",
     //           inputAccessoryFrame.origin.x, inputAccessoryFrame.origin.y,
     //           inputAccessoryFrame.size.width, inputAccessoryFrame.size.height,
     //           translation, toolbarFrame.size.height,
     //           keyboardVisible, hasSettledShift, manualKeyboardResize, extendSafeArea, ignoreExtendSafeArea,
-    //           oldBottom, bottomInset, bottomInset - oldBottom);
+    //           nativeScrollView.contentInset.bottom, bottomInset, bottomInset - nativeScrollView.contentInset.bottom);
 
     UIEdgeInsets newInsets = UIEdgeInsetsMake(
         nativeScrollView.contentInset.top, 0, bottomInset, 0
     );
     [nativeScrollView setContentInset:newInsets];
     nativeScrollView.scrollIndicatorInsets = newInsets;
+    
+    _cachedContentInsetBottom = bottomInset;
 
     //     NSLog(@"[TiDAKBC] applyScrollViewInset | APPLIED contentInset={{%.0f,%.0f,%.0f,%.0f}}",
     //           nativeScrollView.contentInset.top, nativeScrollView.contentInset.left,
@@ -1724,6 +1741,11 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     CGPoint newOffset = CGPointMake(0, bottomHeight);
     if (fabs(sv.contentOffset.y - bottomHeight) > 1.0) {
+        // Cancel any pending scroll animation to prevent queue buildup
+        [sv cancelAnimations];
+        // Also remove layer animations that might be in flight
+        [sv.layer removeAllAnimations];
+        
         //         NSLog(@"[TiDAKBC] scrollToBottom | APPLIED offset {{%f,%f}} -> {{%f,%.0f}}", sv.contentOffset.x, sv.contentOffset.y, newOffset.x, newOffset.y);
         sv.contentOffset = newOffset;
     } else {
