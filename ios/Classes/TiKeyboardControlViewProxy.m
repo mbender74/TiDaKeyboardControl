@@ -640,10 +640,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         kvoCallCount++;
         
         // Log EVERY call to see actual frequency
-        NSLog(@"[KVO] call#%d | accY=%.1f (delta=%.1f) | frame={{%.0f,%.0f},{%.0f,%.0f}}",
-              kvoCallCount, inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.origin.y - lastAccY,
-              inputAccessoryViewFrame.origin.x, inputAccessoryViewFrame.origin.y,
-              inputAccessoryViewFrame.size.width, inputAccessoryViewFrame.size.height);
+        // NSLog(@"[KVO] call#%d | accY=%.1f (delta=%.1f) | frame={{%.0f,%.0f},{%.0f,%.0f}}",
+        //       kvoCallCount, inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.origin.y - lastAccY,
+        //       inputAccessoryViewFrame.origin.x, inputAccessoryViewFrame.origin.y,
+        //       inputAccessoryViewFrame.size.width, inputAccessoryViewFrame.size.height);
         lastAccY = inputAccessoryViewFrame.origin.y;
 
         /* Performance #3: skip expensive operations if translation hasn't changed during swipe */

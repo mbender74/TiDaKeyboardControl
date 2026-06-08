@@ -1,0 +1,21 @@
+moduledependenciestarget: \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/Foundation-B9H1TEE0EA5Y9F39PVJFBEC7W.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/CoreFoundation-9ZPKT195RML4A2PRM1FZ7VPNC.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/CoreGraphics-1T02PEZ06601OYFQ27PT7O9P3.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/CoreVideo-7D4GAB73FDKUQNYC1N4Y2WDSM.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_DarwinFoundation1-8I9XE77MZAW55N50UIJ2OUPNV.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/QuartzCore-6LGN7BIF8ZML4NJ45SDY7WA80.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/ImageIO-DAV30P9ETECTC4H2FET9P0PNV.pcm \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/Foundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/CoreFoundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/DarwinFoundation1.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/CoreGraphics.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/CoreVideo.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/QuartzCore.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/ImageIO.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/CoreMedia.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/UniformTypeIdentifiers.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/MediaToolbox.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/AVRouting.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/AVFAudio.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/simd/module.modulemap

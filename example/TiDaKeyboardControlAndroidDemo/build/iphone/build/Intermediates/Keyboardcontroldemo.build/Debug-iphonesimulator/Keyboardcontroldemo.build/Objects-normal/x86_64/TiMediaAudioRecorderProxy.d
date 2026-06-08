@@ -1,0 +1,25 @@
+dependencies: \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/Keyboardcontroldemo_Prefix.pch \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/Classes/ThirdpartyNS.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/Classes/TiMediaAudioRecorderProxy.mm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/Classes/TiMediaAudioRecorderProxy.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/Classes/TiMediaTypes.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiFile.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiProxy.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/KrollCallback.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/KrollContext.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/KrollWrapper.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/KrollObject.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiBindingRunLoop.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiEvaluator.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiBase.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiSharedConfig.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiThreading.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiPublicAPI.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/Classes/TiMediaAudioSession.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiFilesystemFileProxy.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiUtils.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiDimension.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiBuffer.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/TiColor.h \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Products/Debug-iphonesimulator/TitaniumKit.framework/Headers/WebFont.h

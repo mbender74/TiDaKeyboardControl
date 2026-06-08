@@ -1,0 +1,23 @@
+moduledependenciestarget: \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_DarwinFoundation1-7HG35NI6RAWSO47EEY80M00WC.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/os_object-E4F6K7D9YDYCYH5HT48RAZWQY.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_DarwinFoundation3-ADOGBGE2YNAX61XPTXBXG8CZ2.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_Builtin_stdbool-1LOP531SMQ9RYX4FDQ7CMW4FO.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_Builtin_stdint-6QM5LQ5F8LBBBPKE4LCNVBYUL.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_DarwinFoundation2-7G6EYFJEU2LXMTLL5A1343VDI.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/Darwin-11EO90TMVDJHNS2SIJ2F14NRL.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/Dispatch-B3W96ZH1S6NM21ZI6TQKTTSZS.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/CoreFoundation-6GIHU4VQOECRKCIC3NJMP6SAR.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/Security-DKID545IWF07U9O6W8NLLGED8.pcm \
+  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/Foundation-JXU3HG6M651GEIRW961RQINJ.pcm \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/Darwin.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/DarwinFoundation1.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/os.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/DarwinFoundation2.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/DarwinFoundation3.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/dispatch.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/CoreFoundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/Security.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/System/Library/Frameworks/Foundation.framework/Modules/module.modulemap \
+  /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator26.2.sdk/usr/include/dnssd.modulemap

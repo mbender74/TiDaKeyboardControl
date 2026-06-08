@@ -3,3 +3,6 @@ android/build
 ios/Build
 .DS_Store
 ios/build
+ios/dist
+node_modules
+example/*/build
