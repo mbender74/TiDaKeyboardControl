@@ -6,6 +6,10 @@ Titanium module for interactive keyboard dismiss for iOS and Android (from API l
 
 iOS was mostly rewritten for iOS 16+ compatibility with smooth 120Hz keyboard tracking.
 
+### Version 2.1.4 (Current)
+- Fixed scroll indicator not updating during swipe-to-dismiss when `autoAdjustBottomPadding: true`
+- Scroll indicator now grows/shrinks proportionally with swipe distance, providing visual feedback that content is accessible above the keyboard
+
 ## Accessing the Module
 
 ```javascript
@@ -20,7 +24,7 @@ var keyboardControlModule = require('de.marcbender.keyboardcontrol');
 | `toolbarView` | :white_check_mark: | :white_check_mark: | Required on both platforms |
 | `parentWindow` | :white_check_mark: | — | Required on iOS for coordinate calculations, TabGroup detection, and safe area handling |
 | `textfield` | :white_check_mark: | — | Required on iOS for interactive dismiss and first-responder tracking |
-| `keyboardPanning` | :white_check_mark: | — | On iOS: enables swipe-to-dismiss. On Android: handled automatically via WindowInsetsAnimation |
+| `keyboardPanning` | :white_check_mark: | — | On iOS: enables swipe-to-dismiss with scroll indicator updates. On Android: handled automatically via WindowInsetsAnimation |
 | `autoAdjustBottomPadding` | :white_check_mark: | :white_check_mark: | iOS uses `contentInset.bottom`; Android uses RecyclerView bottom padding |
 | `autoSizeAndKeepScrollingViewAboveToolbar` | :white_check_mark: | :white_check_mark: | iOS uses `bottom` layout constraint; Android adjusts view bottom property |
 | `autoScrollToBottom` | :white_check_mark: | :white_check_mark: | iOS animates in sync with keyboard curve; Android uses `scrollToPosition` or `fullScroll` |
@@ -90,7 +94,7 @@ showKeyboardOnScrollUp ──► enables show-on-overscroll-at-bottom
 | `autoSizeAndKeepScrollingViewAboveToolbar` | Sets `bottom = initialBottom + toolbarHeight` | Sets `bottom = initialBottom + toolbarHeight + translation` | Sets `bottom = initialBottom + toolbarHeight` | Sets `bottom = initialBottom + toolbarHeight + translation` | Sets `bottom` via KVO delta |
 | `autoScrollToBottom` | — | Scrolls to bottom (animated in sync with keyboard) | — | Scrolls to bottom (immediate) | Scrolls to bottom on settle |
 | `ignoreExtendSafeArea` | Adjusts toolbar transform and `contentInset.bottom` correction | — | — | — | — |
-| `keyboardPanning` | Attaches `UIPanGestureRecognizer` and `BABFrameObservingInputAccessoryView` | — | — | — | Drives KVO callbacks for 120Hz toolbar tracking |
+| `keyboardPanning` | Attaches `UIPanGestureRecognizer` and `BABFrameObservingInputAccessoryView` | — | — | — | Drives KVO callbacks for 120Hz toolbar tracking with scroll indicator updates |
 | `showKeyboardOnScrollUp` | Installs `UIScrollViewDelegate` proxy | — | — | — | Calls `becomeFirstResponder` on overscroll at bottom |
 
 ## Properties
