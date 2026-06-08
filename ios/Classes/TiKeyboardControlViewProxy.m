@@ -1419,19 +1419,18 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             NSLog(@"[TiDAKBC] SPRING | UIView animation: trans=%f, duration=%f", trans, keyboardTransitionDuration);
         } else {
             // Create spring animation matching iOS keyboard spring
-            UISpringTimingParameters *springParams = [[UISpringTimingParameters alloc] initWithMass:1.0 stiffness:140 damping:12 initialVelocity:CGVectorMake(0, 0)];
-
+            // iOS keyboard uses: dampingRatio ~0.5-0.6, with slight overshoot
             __strong TiKeyboardControlViewProxy *strongSelf = self;
             [UIView animateWithDuration:keyboardTransitionDuration
                                     delay:0.0
-                        usingSpringWithDamping:0.55
+                        usingSpringWithDamping:0.6
                               initialSpringVelocity:0.0
                                             options:UIViewAnimationOptionBeginFromCurrentState
                                          animations:^{
                 CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, -trans);
                 strongSelf->toolbarview.layer.affineTransform = newTransform;
             } completion:nil];
-            NSLog(@"[TiDAKBC] SPRING | Spring anim: trans=%f, duration=%f, damping=0.55", trans, keyboardTransitionDuration);
+            NSLog(@"[TiDAKBC] SPRING | Spring anim: trans=%f, duration=%f, damping=0.6", trans, keyboardTransitionDuration);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
