@@ -639,11 +639,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         static CGFloat lastAccY = -1;
         kvoCallCount++;
         
-        // Log every 10th call to show frequency without spamming
-        if (kvoCallCount % 10 == 0 || fabs(inputAccessoryViewFrame.origin.y - lastAccY) > 5.0) {
-            NSLog(@"[KVO-FREQ] call#%d | accY=%.1f (delta=%.1f)", kvoCallCount, inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.origin.y - lastAccY);
-            lastAccY = inputAccessoryViewFrame.origin.y;
-        }
+        // Log EVERY call to see actual frequency
+        NSLog(@"[KVO-FREQ] call#%d | accY=%.1f (delta=%.1f)", kvoCallCount, inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.origin.y - lastAccY);
+        lastAccY = inputAccessoryViewFrame.origin.y;
 
         /* Performance #3: skip expensive operations if translation hasn't changed during swipe */
         BOOL translationUnchanged = (fabs(cachedTrans - strongSelf->lastShiftValue) < 0.5);
