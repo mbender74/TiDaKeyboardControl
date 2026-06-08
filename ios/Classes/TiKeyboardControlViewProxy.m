@@ -1293,11 +1293,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     self->animationCurve = [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
     [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
 
-    // Detect spring animation (swipe completion) — iOS reports duration > 0 but the actual
-    // animation is a spring physics curve that doesn't match any UIViewAnimationCurve.
-    // Use swipeEnded flag to detect if user just released a swipe.
-    BOOL isSpringAnimation = self->swipeEnded;
-    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, swipeEnded=%d, duration=%f", isSpringAnimation, self->swipeEnded, keyboardTransitionDuration);
+    // iOS keyboard ALWAYS uses spring physics when animating (not just on swipe).
+    // Use spring animation for the toolbar to match perfectly.
+    BOOL isSpringAnimation = YES;
+    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: always spring, duration=%f", keyboardTransitionDuration);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
