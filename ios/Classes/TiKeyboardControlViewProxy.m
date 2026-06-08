@@ -1425,7 +1425,11 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // When switching keyboards (keyboard already visible), the KVO swipe baseline
     // (initialAccessoryViewFrame) still points to the previous keyboard's position.
     // Update it to the new position so swipe deltas are computed correctly.
+    // BUT: Don't update during spring animation — KVO needs the old baseline for delta tracking.
     if (keyboardVisible && !CGRectIsEmpty(lastInputAccessoryViewFrame)) {
+        NSLog(@"[TiDAKBC] SPRING | Updating initialAcc: from {{%f,%f}} to {{%f,%f}}",
+              self->initialAccessoryViewFrame.origin.x, self->initialAccessoryViewFrame.origin.y,
+              lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y);
         self->initialAccessoryViewFrame = lastInputAccessoryViewFrame;
         //         NSLog(@"[TiDAKBC] keyboardWillShow | keyboard switch: updated initialAccessoryViewFrame to {{%f,%f},{%f,%f}}",
         //               lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
