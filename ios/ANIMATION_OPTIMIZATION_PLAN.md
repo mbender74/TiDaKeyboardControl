@@ -317,6 +317,7 @@ displayLink.paused = NO;
 | Configurable interpolator | — | `setAnimationCurve()` mit 4 curves | ✅ Implementiert |
 | Swipe CALayer deduplication | `CGAffineTransformEqualToTransform` check | — | ✅ Compiliert, getestet |
 | Swipe autoSize deduplication | `_lastAutoSizeBottomValue` (< 0.1 threshold) | — | ✅ Compiliert, getestet |
+| **Spring animation sync** | KVO tracking statt UIView Animation bei Swipe-Ende | — | ✅ Compiliert, getestet |
 
 ### Noch offen 🔧
 | Optimierung | Priorität | Aufwand |
