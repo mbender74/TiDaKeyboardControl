@@ -1376,6 +1376,29 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                   i, frameCount, (keyboardTransitionDuration * t), interpolatedY);
         }
     }
+    
+    // Animate toolbar with spring interpolation using UIView
+    {
+        CGFloat targetTrans = [self computeToolbarTranslation:lastInputAccessoryViewFrame];
+        CGFloat currentTrans = toolbarview.layer.affineTransform.ty;
+        
+        NSLog(@"[TOOLBAR] Start anim: currentTrans=%.1f targetTrans=%.1f delta=%.1f", 
+              currentTrans, targetTrans, targetTrans - currentTrans);
+        
+        // Use UIView spring animation to match keyboard
+        __strong TiKeyboardControlViewProxy *strongSelf = self;
+        [UIView animateWithDuration:keyboardTransitionDuration
+                                delay:0.0
+                    usingSpringWithDamping:0.55
+                          initialSpringVelocity:0.0
+                                        options:UIViewAnimationOptionBeginFromCurrentState
+                                     animations:^{
+            CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, -targetTrans);
+            strongSelf->toolbarview.layer.affineTransform = newTransform;
+        } completion:^(BOOL finished) {
+            NSLog(@"[TOOLBAR] Anim complete: finalTransform.ty=%.1f", strongSelf->toolbarview.layer.affineTransform.ty);
+        }];
+    }
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
