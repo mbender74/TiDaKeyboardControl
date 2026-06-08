@@ -1290,8 +1290,14 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     self->animationCurve = [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
     [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
 
-    //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, keyboardFrame={{%f,%f},{%f,%f}} ===",
-    //           (long)self->animationCurve, keyboardTransitionDuration,
+    // Detect spring animation (swipe completion) — iOS reports duration > 0 but the actual
+    // animation is a spring physics curve that doesn't match any UIViewAnimationCurve.
+    // In this case, let KVO callbacks handle the toolbar tracking with direct CALayer updates
+    // instead of using a fixed UIView animation that will desync from the keyboard.
+    BOOL isSpringAnimation = (keyboardVisible && !CGRectIsNull(self->initialAccessoryViewFrame));
+
+    //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
+    //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
     //           keyboardEndFrameWindow.origin.x, keyboardEndFrameWindow.origin.y,
     //           keyboardEndFrameWindow.size.width, keyboardEndFrameWindow.size.height);
     self->keyboardShowing = YES;
@@ -1402,9 +1408,13 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         //         NSLog(@"[TiDAKBC] keyboardWillShow | apply translation=%f, lastAcc={{%f,%f},{%f,%f}}",
         //               trans, lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
         //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
-        [self applyToolbarTranslation:trans
-                                animated:YES duration:keyboardTransitionDuration
-                                   curve:self->animationCurve];
+        // For spring animation (swipe completion), skip UIView animation and let KVO callbacks
+        // track the keyboard position with direct CALayer updates for perfect sync.
+        if (!isSpringAnimation) {
+            [self applyToolbarTranslation:trans
+                                    animated:YES duration:keyboardTransitionDuration
+                                       curve:self->animationCurve];
+        }
         self->settledShift = trans;
         self->lastShiftValue = trans;
     }
