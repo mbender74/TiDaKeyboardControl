@@ -1293,10 +1293,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     self->animationCurve = [[notification.userInfo valueForKey:UIKeyboardAnimationCurveUserInfoKey] integerValue];
     [[notification.userInfo valueForKey:UIKeyboardAnimationDurationUserInfoKey] getValue:&keyboardTransitionDuration];
 
-    // iOS keyboard ALWAYS uses spring physics when animating (not just on swipe).
-    // Use spring animation for the toolbar to match perfectly.
+    // iOS keyboard uses spring physics. Let KVO track the actual position
+    // with direct CALayer updates - no UIView animation needed.
     BOOL isSpringAnimation = YES;
-    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: always spring, duration=%f", keyboardTransitionDuration);
+    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: KVO tracking, duration=%f", keyboardTransitionDuration);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
@@ -1410,27 +1410,15 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         //         NSLog(@"[TiDAKBC] keyboardWillShow | apply translation=%f, lastAcc={{%f,%f},{%f,%f}}",
         //               trans, lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
         //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
-        // For spring animation (swipe completion), use UISpringTimingParameters to match
-        // the keyboard's spring physics exactly. KVO alone isn't frequent enough during fast settling.
+        // Let KVO track the keyboard position with direct CALayer updates.
+        // No UIView animation needed - KVO fires at 120Hz on ProMotion displays.
         if (!isSpringAnimation) {
             [self applyToolbarTranslation:trans
                                     animated:YES duration:keyboardTransitionDuration
                                        curve:self->animationCurve];
             NSLog(@"[TiDAKBC] SPRING | UIView animation: trans=%f, duration=%f", trans, keyboardTransitionDuration);
         } else {
-            // Create spring animation matching iOS keyboard spring
-            // iOS keyboard uses: dampingRatio ~0.5-0.6, with slight overshoot
-            __strong TiKeyboardControlViewProxy *strongSelf = self;
-            [UIView animateWithDuration:keyboardTransitionDuration
-                                    delay:0.0
-                        usingSpringWithDamping:0.6
-                              initialSpringVelocity:0.0
-                                            options:UIViewAnimationOptionBeginFromCurrentState
-                                         animations:^{
-                CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, -trans);
-                strongSelf->toolbarview.layer.affineTransform = newTransform;
-            } completion:nil];
-            NSLog(@"[TiDAKBC] SPRING | Spring anim: trans=%f, duration=%f, damping=0.6", trans, keyboardTransitionDuration);
+            NSLog(@"[TiDAKBC] SPRING | KVO tracking: trans=%f", trans);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
