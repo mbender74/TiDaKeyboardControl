@@ -1158,6 +1158,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     }
     keyboardVisible = YES;
     keyboardWillHide = NO;
+    swipeEnded = NO; // Clear flag after keyboard animation completes
     //     NSLog(@"[TiDAKBC] === keyboardDidShow ===");
 
    // Store settled shift value (NOT toolbarview.transform which may be stale)
@@ -1233,6 +1234,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     keyboardVisible = NO;
     keyboardWillHide = NO;
+    swipeEnded = NO;
     //     NSLog(@"[TiDAKBC] === keyboardDidHide | scrollView.bottom=%.0f, lastShiftValue=%f, toolbarH=%.0f, accFrame={{%f,%f},{%f,%f}} ===",
     //           nativeScrollView ? nativeScrollView.contentInset.bottom : -1, lastShiftValue,
     //           toolbarview.frame.size.height,
@@ -1293,9 +1295,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     // Detect spring animation (swipe completion) — iOS reports duration > 0 but the actual
     // animation is a spring physics curve that doesn't match any UIViewAnimationCurve.
-    // Use _manualPanning flag to detect if user is currently swiping.
-    BOOL isSpringAnimation = self->_manualPanning;
-    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, manualPanning=%d, duration=%f", isSpringAnimation, self->_manualPanning, keyboardTransitionDuration);
+    // Use swipeEnded flag to detect if user just released a swipe.
+    BOOL isSpringAnimation = self->swipeEnded;
+    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, swipeEnded=%d, duration=%f", isSpringAnimation, self->swipeEnded, keyboardTransitionDuration);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
@@ -2079,6 +2081,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     self.manualPanning = panning;
 }
 
+-(void)swipeEnded:(BOOL)ended {
+    swipeEnded = ended;
+}
+
 
 
 #pragma mark - JavaScript-Exposed Height Queries
@@ -2221,7 +2227,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         case UIGestureRecognizerStateEnded:
         {
             [(TiKeyboardControlViewProxy *)[self proxy] manualPanning:NO];
-            ////////NSLog ( @" panGestureDidChange manuall dragging FALSE" );
+            [(TiKeyboardControlViewProxy *)[self proxy] swipeEnded:YES];
+            ////////NSLog ( @" panGestureDidChange manuall dragging FALSE, swipeEnded=YES" );
 
         }
             break;

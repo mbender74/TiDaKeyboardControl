@@ -55,6 +55,7 @@
     BOOL keyboardVisible;
     BOOL keyboardWillHide;
     BOOL keyboardShowing; // YES during keyboardWillShow through keyboardDidShow
+    BOOL swipeEnded; // YES after swipe ends until keyboardDidShow
 
     CGFloat lastShiftValue;
     CGFloat lastY;
