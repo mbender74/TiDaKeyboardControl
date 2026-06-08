@@ -1296,9 +1296,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // animation is a spring physics curve that doesn't match any UIViewAnimationCurve.
     // In this case, let KVO callbacks handle the toolbar tracking with direct CALayer updates
     // instead of using a fixed UIView animation that will desync from the keyboard.
-    // Also detect first keyboard show (initialAcc is NULL) — iOS may use spring physics.
-    BOOL isSpringAnimation = (keyboardVisible || CGRectIsNull(self->initialAccessoryViewFrame));
-    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, duration=%f", isSpringAnimation, keyboardTransitionDuration);
+    BOOL isSpringAnimation = (keyboardVisible && !CGRectIsNull(self->initialAccessoryViewFrame));
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
@@ -1425,12 +1423,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // When switching keyboards (keyboard already visible), the KVO swipe baseline
     // (initialAccessoryViewFrame) still points to the previous keyboard's position.
     // Update it to the new position so swipe deltas are computed correctly.
-    // BUT: Don't update during spring animation — KVO needs the old baseline for delta tracking.
     if (keyboardVisible && !CGRectIsEmpty(lastInputAccessoryViewFrame)) {
-        // Keep old baseline during spring animation so KVO deltas are correct
-        if (!isSpringAnimation) {
-            self->initialAccessoryViewFrame = lastInputAccessoryViewFrame;
-        }
+        self->initialAccessoryViewFrame = lastInputAccessoryViewFrame;
     }
 
     // Clear the flag at the end of keyboardWillShow regardless of which path was taken
