@@ -1331,23 +1331,49 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         }
     }
     
-    // Manual interpolation logging (iOS 15 and older)
+    // Linear interpolation logging
     {
         CGFloat startY = keyboardStartFrame.origin.y;
         CGFloat endY = keyboardEndFrameWindow.origin.y;
         CGFloat totalDelta = endY - startY;
         
-        // Simulate 60fps interpolation over duration
         int frameCount = (int)(keyboardTransitionDuration * 60);
-        NSLog(@"[INTERP] Manual: startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d",
+        NSLog(@"[INTERP-LINEAR] startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d",
               startY, endY, totalDelta, keyboardTransitionDuration, frameCount);
         
-        // Log ALL interpolated positions
         for (int i = 0; i < frameCount; i++) {
             CGFloat progress = (CGFloat)i / (CGFloat)frameCount;
             CGFloat interpolatedY = startY + (totalDelta * progress);
-            NSLog(@"[INTERP] frame[%2d/%2d] t=%.3fs progress=%.2f y=%.1f", 
-                  i, frameCount, (keyboardTransitionDuration * progress), progress, interpolatedY);
+            NSLog(@"[INTERP-LINEAR] frame[%2d/%2d] t=%.3fs y=%.1f", 
+                  i, frameCount, (keyboardTransitionDuration * progress), interpolatedY);
+        }
+    }
+    
+    // Spring interpolation logging (matching iOS keyboard spring)
+    {
+        CGFloat startY = keyboardStartFrame.origin.y;
+        CGFloat endY = keyboardEndFrameWindow.origin.y;
+        CGFloat totalDelta = endY - startY;
+        
+        // Spring parameters (damping=0.55, stiffness=140)
+        CGFloat damping = 0.55;
+        CGFloat stiffness = 140.0;
+        CGFloat mass = 1.0;
+        
+        int frameCount = (int)(keyboardTransitionDuration * 60);
+        NSLog(@"[INTERP-SPRING] startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d damping=%.2f stiffness=%.0f",
+              startY, endY, totalDelta, keyboardTransitionDuration, frameCount, damping, stiffness);
+        
+        // Simple spring simulation (eased out)
+        for (int i = 0; i < frameCount; i++) {
+            CGFloat t = (CGFloat)i / (CGFloat)frameCount;
+            // EaseOutBack curve (overshoot then settle)
+            CGFloat c1 = 1.70158;
+            CGFloat c3 = c1 + 1.0;
+            CGFloat eased = 1.0 + c3 * pow(t - 1.0, 3.0) + c1 * pow(t - 1.0, 2.0);
+            CGFloat interpolatedY = startY + (totalDelta * eased);
+            NSLog(@"[INTERP-SPRING] frame[%2d/%2d] t=%.3fs y=%.1f", 
+                  i, frameCount, (keyboardTransitionDuration * t), interpolatedY);
         }
     }
 
