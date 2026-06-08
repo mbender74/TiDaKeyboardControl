@@ -1293,11 +1293,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
 
     // Detect spring animation (swipe completion) — iOS reports duration > 0 but the actual
     // animation is a spring physics curve that doesn't match any UIViewAnimationCurve.
-    // In this case, let KVO callbacks handle the toolbar tracking with direct CALayer updates
-    // instead of using a fixed UIView animation that will desync from the keyboard.
-    // Also detect first keyboard show (initialAcc is NULL) — iOS may use spring physics.
-    BOOL isSpringAnimation = (keyboardVisible || CGRectIsNull(self->initialAccessoryViewFrame));
-    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, duration=%f, curve=%ld", isSpringAnimation, keyboardTransitionDuration, (long)self->animationCurve);
+    // Use _manualPanning flag to detect if user is currently swiping.
+    BOOL isSpringAnimation = self->_manualPanning;
+    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, manualPanning=%d, duration=%f", isSpringAnimation, self->_manualPanning, keyboardTransitionDuration);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
