@@ -1296,6 +1296,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // In this case, let KVO callbacks handle the toolbar tracking with direct CALayer updates
     // instead of using a fixed UIView animation that will desync from the keyboard.
     BOOL isSpringAnimation = (keyboardVisible && !CGRectIsNull(self->initialAccessoryViewFrame));
+    NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, duration=%f, curve=%ld", isSpringAnimation, keyboardTransitionDuration, (long)self->animationCurve);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
