@@ -121,8 +121,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         settledShift = 0;
         hasSettledShift = NO;
         keyboardInsetSettled = NO;
-        isAnimatingToolbar = NO;
-        cachedContentInsetBottom = 0.0;
+        _isAnimatingToolbar = NO;
+        _cachedContentInsetBottom = 0.0;
     }
 
     return self;
@@ -1742,8 +1742,6 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     CGPoint newOffset = CGPointMake(0, bottomHeight);
     if (fabs(sv.contentOffset.y - bottomHeight) > 1.0) {
         // Cancel any pending scroll animation to prevent queue buildup
-        [sv cancelAnimations];
-        // Also remove layer animations that might be in flight
         [sv.layer removeAllAnimations];
         
         //         NSLog(@"[TiDAKBC] scrollToBottom | APPLIED offset {{%f,%f}} -> {{%f,%.0f}}", sv.contentOffset.x, sv.contentOffset.y, newOffset.x, newOffset.y);
