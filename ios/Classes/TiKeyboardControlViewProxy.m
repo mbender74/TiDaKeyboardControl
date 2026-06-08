@@ -797,6 +797,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                     [CATransaction setDisableActions:YES];
                     strongSelf->toolbarview.layer.affineTransform = newTransform;
                     [CATransaction commit];
+                    NSLog(@"[KVO-TRACK] accY=%.1f | deltaY=%.1f | toolbarTy=%.1f | settledShift=%.1f",
+                          inputAccessoryViewFrame.origin.y, deltaY, newTy, strongSelf->settledShift);
                 }
 
                 // Update autoSize bottom constraint to follow swipe (skip if value unchanged)
@@ -1416,6 +1418,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             [self applyToolbarTranslation:trans
                                     animated:YES duration:keyboardTransitionDuration
                                        curve:self->animationCurve];
+            NSLog(@"[KVO-TRACK] UIView anim: targetTrans=%.1f", trans);
+        } else {
+            NSLog(@"[KVO-TRACK] SPRING: KVO will track, targetTrans=%.1f", trans);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
