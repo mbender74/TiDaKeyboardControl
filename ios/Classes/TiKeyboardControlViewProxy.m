@@ -1411,15 +1411,28 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         //         NSLog(@"[TiDAKBC] keyboardWillShow | apply translation=%f, lastAcc={{%f,%f},{%f,%f}}",
         //               trans, lastInputAccessoryViewFrame.origin.x, lastInputAccessoryViewFrame.origin.y,
         //               lastInputAccessoryViewFrame.size.width, lastInputAccessoryViewFrame.size.height);
-        // For spring animation (swipe completion), skip UIView animation and let KVO callbacks
-        // track the keyboard position with direct CALayer updates for perfect sync.
+        // For spring animation (swipe completion), use UISpringTimingParameters to match
+        // the keyboard's spring physics exactly. KVO alone isn't frequent enough during fast settling.
         if (!isSpringAnimation) {
             [self applyToolbarTranslation:trans
                                     animated:YES duration:keyboardTransitionDuration
                                        curve:self->animationCurve];
             NSLog(@"[TiDAKBC] SPRING | UIView animation: trans=%f, duration=%f", trans, keyboardTransitionDuration);
         } else {
-            NSLog(@"[TiDAKBC] SPRING | Skipping UIView anim, KVO will track: trans=%f, initialAccY=%f", trans, self->initialAccessoryViewFrame.origin.y);
+            // Create spring animation matching iOS keyboard spring
+            UISpringTimingParameters *springParams = [[UISpringTimingParameters alloc] initWithMass:1.0 stiffness:140 damping:12 initialVelocity:CGVectorMake(0, 0)];
+
+            __strong TiKeyboardControlViewProxy *strongSelf = self;
+            [UIView animateWithDuration:keyboardTransitionDuration
+                                    delay:0.0
+                        usingSpringWithDamping:0.55
+                              initialSpringVelocity:0.0
+                                            options:UIViewAnimationOptionBeginFromCurrentState
+                                         animations:^{
+                CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, -trans);
+                strongSelf->toolbarview.layer.affineTransform = newTransform;
+            } completion:nil];
+            NSLog(@"[TiDAKBC] SPRING | Spring anim: trans=%f, duration=%f, damping=0.55", trans, keyboardTransitionDuration);
         }
         self->settledShift = trans;
         self->lastShiftValue = trans;
