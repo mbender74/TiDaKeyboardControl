@@ -1295,7 +1295,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // animation is a spring physics curve that doesn't match any UIViewAnimationCurve.
     // In this case, let KVO callbacks handle the toolbar tracking with direct CALayer updates
     // instead of using a fixed UIView animation that will desync from the keyboard.
-    BOOL isSpringAnimation = (keyboardVisible && !CGRectIsNull(self->initialAccessoryViewFrame));
+    // Also detect first keyboard show (initialAcc is NULL) — iOS may use spring physics.
+    BOOL isSpringAnimation = (keyboardVisible || CGRectIsNull(self->initialAccessoryViewFrame));
     NSLog(@"[TiDAKBC] SPRING | keyboardWillShow: isSpring=%d, duration=%f, curve=%ld", isSpringAnimation, keyboardTransitionDuration, (long)self->animationCurve);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
