@@ -1506,7 +1506,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             
             // Calculate delay: toolbar starts when keyboard reaches its level
             CGFloat delayRatio = (keyboardDistance > 0) ? (keyboardDistance - toolbarDistance) / keyboardDistance : 0;
-            CGFloat delay = keyboardTransitionDuration * MAX(0, delayRatio) * 0.25;  // 25% des Verhältnisses
+            CGFloat delay = keyboardTransitionDuration * MAX(0, delayRatio) * 0.28;  // 28% des Verhältnisses
             CGFloat toolbarDuration = keyboardTransitionDuration - delay;  // Kürzere duration
             
             __strong TiKeyboardControlViewProxy *strongSelf = self;
