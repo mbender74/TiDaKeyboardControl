@@ -634,6 +634,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         }
         CGFloat cachedTrans = strongSelf->_cachedTranslation;
 
+        /* Performance #3: skip expensive operations if translation hasn't changed during swipe */
+        BOOL translationUnchanged = (fabs(cachedTrans - strongSelf->lastShiftValue) < 0.5);
+
         CGRect tvf = toolbarview.frame;
         //         NSLog(@"[TiDAKBC] KVO | frame.y=%f, h=%f | vis=%d, hide=%d, settled=%d, initAccIsNull=%d, mResize=%d",
         //               inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.size.height,
@@ -788,15 +791,21 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 if (newTy > 0) newTy = 0;
                 CGAffineTransform newTransform = CGAffineTransformMakeTranslation(0, newTy);
 
-                [CATransaction begin];
-                [CATransaction setDisableActions:YES];
-                strongSelf->toolbarview.layer.affineTransform = newTransform;
-                [CATransaction commit];
+                // Skip CALayer update if transform is already at target value
+                if (!CGAffineTransformEqualToTransform(strongSelf->toolbarview.layer.affineTransform, newTransform)) {
+                    [CATransaction begin];
+                    [CATransaction setDisableActions:YES];
+                    strongSelf->toolbarview.layer.affineTransform = newTransform;
+                    [CATransaction commit];
+                }
 
-                // Update autoSize bottom constraint to follow swipe (without animation)
-                [UIView performWithoutAnimation:^{
-                    [strongSelf applyAutoSizeBottomConstraintWithTranslation:strongSelf->settledShift - deltaY];
-                }];
+                // Update autoSize bottom constraint to follow swipe (skip if value unchanged)
+                CGFloat newTrans = strongSelf->settledShift - deltaY;
+                if (fabs(newTrans - strongSelf->_lastAutoSizeBottomValue) >= 0.1) {
+                    [UIView performWithoutAnimation:^{
+                        [strongSelf applyAutoSizeBottomConstraintWithTranslation:newTrans];
+                    }];
+                }
                 
                 // FIX: Also update contentInset.bottom for scroll indicator during swipe
                 [strongSelf applyScrollViewInset:inputAccessoryViewFrame translation:cachedTrans];
