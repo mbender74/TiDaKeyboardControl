@@ -771,6 +771,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 // NO keyboardInsetSettled=YES here — wait for YES-settle or normal settled path to set it
                 //                 NSLog(@"[TiDAKBC] KVO TOOLBAR RESIZE | SKIPPED inset (waiting for YES-settle), bottom=%.0f", strongSelf->nativeScrollView.contentInset.bottom);
                 [strongSelf applyAutoSizeBottomConstraintWithTranslation:trans];
+                
+                // FIX: Also update contentInset.bottom for scroll indicator during toolbar resize
+                [strongSelf applyScrollViewInset:inputAccessoryViewFrame translation:cachedTrans];
 
                 // Auto-scroll to bottom on toolbar resize
                 if (strongSelf->autoScrollToBottom) {
@@ -792,6 +795,9 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
                 [UIView performWithoutAnimation:^{
                     [strongSelf applyAutoSizeBottomConstraintWithTranslation:strongSelf->settledShift - deltaY];
                 }];
+                
+                // FIX: Also update contentInset.bottom for scroll indicator during swipe
+                [strongSelf applyScrollViewInset:inputAccessoryViewFrame translation:cachedTrans];
             }
 
             // Spring settled (deltaY < kTIDKBCSettleThreshold): CALayer auf settledShift resettet
