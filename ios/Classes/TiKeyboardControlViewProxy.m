@@ -1319,6 +1319,37 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
           keyboardStartFrame.origin.x, keyboardStartFrame.origin.y, keyboardStartFrame.size.width, keyboardStartFrame.size.height,
           keyboardEndFrameWindow.origin.x, keyboardEndFrameWindow.origin.y, keyboardEndFrameWindow.size.width, keyboardEndFrameWindow.size.height,
           keyboardTransitionDuration, (long)self->animationCurve);
+    
+    // iOS 16+ UIKeyboardLayoutGuide logging
+    if (@available(iOS 16.0, *)) {
+        UIWindow *window = [self resolveKeyWindow];
+        if (window) {
+            UILayoutGuide *guide = [window safeAreaLayoutGuide];
+            NSLog(@"[IOS16+] LayoutGuide available: safeArea={{%.0f,%.0f},{%.0f,%.0f}}", 
+                  guide.layoutFrame.origin.x, guide.layoutFrame.origin.y, 
+                  guide.layoutFrame.size.width, guide.layoutFrame.size.height);
+        }
+    }
+    
+    // Manual interpolation logging (iOS 15 and older)
+    {
+        CGFloat startY = keyboardStartFrame.origin.y;
+        CGFloat endY = keyboardEndFrameWindow.origin.y;
+        CGFloat totalDelta = endY - startY;
+        
+        // Simulate 60fps interpolation over duration
+        int frameCount = (int)(keyboardTransitionDuration * 60);
+        NSLog(@"[INTERP] Manual: startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d",
+              startY, endY, totalDelta, keyboardTransitionDuration, frameCount);
+        
+        // Log ALL interpolated positions
+        for (int i = 0; i < frameCount; i++) {
+            CGFloat progress = (CGFloat)i / (CGFloat)frameCount;
+            CGFloat interpolatedY = startY + (totalDelta * progress);
+            NSLog(@"[INTERP] frame[%2d/%2d] t=%.3fs progress=%.2f y=%.1f", 
+                  i, frameCount, (keyboardTransitionDuration * progress), progress, interpolatedY);
+        }
+    }
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
