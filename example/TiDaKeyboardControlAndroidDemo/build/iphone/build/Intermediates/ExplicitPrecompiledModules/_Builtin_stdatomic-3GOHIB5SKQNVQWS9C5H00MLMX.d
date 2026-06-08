@@ -1,3 +1,0 @@
-moduledependenciestarget: \
-  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_Builtin_stddef-6HT5LJYGSS0SBYGY9I3XE49SU.pcm \
-  /Users/marcbender/Titanium-Modules/TiDaKeyboardControl/example/TiDaKeyboardControlAndroidDemo/build/iphone/build/Intermediates/ExplicitPrecompiledModules/_Builtin_stdint-BGXW3OKNS7SOP5U6RZ4N6YSFC.pcm

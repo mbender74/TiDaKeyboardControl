@@ -1,0 +1,19 @@
+#
+# this is your module manifest and used by Titanium
+# during compilation, packaging, distribution, etc.
+#
+version: 2.4.0
+apiversion: 2
+architectures: arm64 x86_64
+mac: true
+description: Titanium iOS module extending Ti.UI.TableView with smooth scrolling, row visibility tracking, opaque rendering, and performance optimizations
+author: Marc Bender
+license: Apache Public License 2.0
+copyright: Copyright (c) 2026 by Marc Bender
+
+# these should not be edited
+name: TableViewExtension
+moduleid: de.marcbender.tableviewextension
+guid: aafa5f27-8f6a-4403-a587-1346d12b5638
+platform: iphone
+minsdk: 13.2.0.GA

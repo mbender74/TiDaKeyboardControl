@@ -42,7 +42,8 @@
 
 				<key>NSCameraUsageDescription</key>
                 <string>Do you allow to access the camera for scanning?</string>
-
+				<key>CADisableMinimumFrameDurationOnPhone</key>
+                <true/>
 			</dict>
 		</plist>
 	</ios>
@@ -73,7 +74,13 @@
 		</manifest>
 	</android>
 	<modules>
+			<module>de.marcbender.emitterview</module>
+	        <module>ti.popover</module>
 	        <module>dk.napp.drawer</module>
+	        <module>ti.labelextension</module>
+	        <module>ti.imageviewextension</module>
+	        <module>ti.bottomsheetcontroller</module>
+	        <module>de.marcbender.tableviewextension</module>
 	        <module>de.marcbender.keyboardcontrol</module>
 	</modules>
 	<deployment-targets>

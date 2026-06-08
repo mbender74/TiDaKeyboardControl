@@ -1,0 +1,19 @@
+#
+# this is your module manifest and used by Titanium
+# during compilation, packaging, distribution, etc.
+#
+version: 1.3.8
+apiversion: 2
+architectures: arm64 x86_64
+mac: true
+description: TiUIImageView Extension for iOS — animated fade-in, calcMinMax, blur, averageColor, noTransparency, tintColor
+author: Marc Bender
+license: Apache 2.0
+copyright: Copyright (c) 2022-2026 by Marc Bender
+
+# these should not be edited
+name: ti.imageviewextension
+moduleid: ti.imageviewextension
+guid: a89abb68-61e6-46e9-b0fa-215cb5f54a52
+platform: iphone
+minsdk: 13.2.0

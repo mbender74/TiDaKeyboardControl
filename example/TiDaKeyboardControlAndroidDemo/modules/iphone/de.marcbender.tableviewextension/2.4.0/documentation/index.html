@@ -1,0 +1,426 @@
+<h1>TableViewExtension Module v2.4.0</h1>
+
+<h2>Description</h2>
+
+<p>TableViewExtension is a Titanium iOS module that extends the native <code>UITableView</code> component with advanced functionality including:
+- <strong>Row Visibility Tracking</strong> – Monitor which table rows enter/leave the viewport
+- <strong>Auto-Snapping Scroll</strong> – Snap scrolling to row boundaries for a carousel-like experience; scrolling always stops at the top of a fully visible row
+- <strong>Dynamic Content Insets</strong> – Programmatically adjust table insets with animation support
+- <strong>Row Prepend</strong> – Insert rows at the top with automatic scroll offset adjustment
+- <strong>Pan Gesture Events</strong> – Custom pan gesture recognition on table views</p>
+
+<h3>Performance Optimizations (v2.3.0+)</h3>
+
+<ul><li><strong>Intelligent Height Caching</strong> – Template-based and indexPath-based caching with NSCache</li><li><strong>Adaptive Preload Queue</strong> – Background height calculation with concurrent GCD queue</li><li><strong>Dynamic Cache Limits</strong> – Adjusts based on device memory (3GB+ devices get more)</li><li><strong>Scroll Event Throttling</strong> – 30fps throttling to prevent jank</li><li><strong>Image Preloading</strong> – Thread-safe async image loading from nested view hierarchies</li><li><strong>Memory Warning Handling</strong> – Automatic cache clearing on low memory, plus cache teardown on module shutdown</li><li><strong>Section Header/Footer Caching</strong> – Estimated heights for better scrolling</li><li><strong>FPS Tracking</strong> – Real-time scroll performance monitoring</li><li><strong>Cell Reuse Statistics</strong> – Track cell creation vs reuse rates</li><li><strong>Cache Invalidation on Reuse</strong> – Stale cached heights are cleared when cells are recycled</li></ul>
+
+<h3>ProMotion 120Hz Support (v2.4.0+)</h3>
+
+<ul><li><strong>Adaptive Throttle</strong> – Automatically detects ProMotion displays and increases event throttle from 30fps to 60fps</li><li><strong>Frame-aligned Animations</strong> – Animation durations aligned to 60/120Hz frame boundaries</li><li><strong>Dynamic FPS Tracking</strong> – Sample window adapts to display refresh rate for accurate FPS reporting</li></ul>
+
+<h2>Accessing the TableViewExtension Module</h2>
+
+<p>To access this module from JavaScript:</p>
+
+<p><code></code>`javascript
+// ES6+ (recommended)
+import tableviewextension from &#39;de.marcbender.tableviewextension&#39;;</p>
+
+<p>// ES5
+var tableviewextension = require(&#39;de.marcbender.tableviewextension&#39;);
+<code></code>`</p>
+
+<h2>Reference</h2>
+
+<h3>TableView Properties</h3>
+
+<h4><code>contentInsets</code></h4>
+
+<p>Gets or sets the content insets of the table view.</p>
+
+<p><strong>Type:</strong> <code>Object</code></p>
+
+<p><strong>Properties:</strong>
+- <code>top</code> (Number) – Top inset in points
+- <code>right</code> (Number) – Right inset in points
+- <code>bottom</code> (Number) – Bottom inset in points
+- <code>left</code> (Number) – Left inset in points</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+const tableView = Ti.UI.createTableView({
+  data: rows,
+  contentInsets: { top: 0, right: 0, bottom: 48, left: 0 }
+});
+</code></p>
+
+<h4><code>handleTouches</code></h4>
+
+<p>Enables or disables user interaction on the table view.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.handleTouches = false; // Disable scrolling
+</code></p>
+
+<h4><code>snappingEnabled</code></h4>
+
+<p>Snap scrolling to row boundaries for a carousel-like experience; scrolling always stops at the top of a fully visible row.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.snappingEnabled = true;
+</code></p>
+
+<h4><code>smoothScrolling</code> <em>(v2.3.0+)</em></h4>
+
+<p>Convenience property that enables all performance optimizations at once.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.smoothScrolling = true;
+// Enables: height caching, estimated heights (80pt), prefetching
+</code></p>
+
+<h4><code>enableHeightCaching</code> <em>(v2.3.0+)</em></h4>
+
+<p>Enables intelligent row height caching with template-based optimization.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.enableHeightCaching = true;
+</code></p>
+
+<h4><code>estimatedRowHeight</code> <em>(v2.3.0+)</em></h4>
+
+<p>Sets the estimated row height for lazy layout calculations.</p>
+
+<p><strong>Type:</strong> <code>Number</code> (points)</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.estimatedRowHeight = 80; // Default recommended value
+</code></p>
+
+<h4><code>prefetchEnabled</code> <em>(v2.3.0+)</em></h4>
+
+<p>Enables background preload queue for proactive height calculation.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.prefetchEnabled = true;
+</code></p>
+
+<h4><code>imagePreloadEnabled</code> <em>(v2.3.0+)</em></h4>
+
+<p>Enables async image preloading from nested view hierarchies.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.imagePreloadEnabled = true;
+</code></p>
+
+<h4><code>MemoryWarningHandling</code> <em>(v2.3.0+)</em></h4>
+
+<p>Enables automatic cache clearing on memory warnings.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.memoryWarningHandling = true;
+</code></p>
+
+<h4><code>sectionHeaderFooterCaching</code> <em>(v2.3.0+)</em></h4>
+
+<p>Enables estimated heights for section headers and footers.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.sectionHeaderFooterCaching = true;
+// Default: header=44pt, footer=22pt
+</code></p>
+
+<h3>ScrollView Properties</h3>
+
+<h4><code>scrollToBottomNoAnim()</code></h4>
+
+<p>Scrolls to the bottom without animation.</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+scrollView.scrollToBottomNoAnim();
+</code></p>
+
+<h4><code>setContentInsets(insets, options)</code></h4>
+
+<p>Sets content insets for scroll views (same signature as TableView).</p>
+
+<h3>TableView Methods</h3>
+
+<h4><code>setContentInsets(insets, options)</code></h4>
+
+<p>Sets the content insets with advanced options for animation and scroll behavior.</p>
+
+<p><strong>Parameters:</strong>
+- <code>insets</code> (Object) – Content inset values with <code>top</code>, <code>right</code>, <code>bottom</code>, <code>left</code>
+- <code>options</code> (Object) – Configuration object:
+  - <code>animated</code> (Boolean) – Animate the change (default: <code>false</code>)
+  - <code>duration</code> (Number) – Animation duration in ms (default: <code>180</code>)
+  - <code>nobottom</code> (Boolean) – Skip scrolling to bottom (default: <code>false</code>)
+  - <code>noOffset</code> (Boolean) – Skip content offset adjustment (default: <code>false</code>)
+  - <code>newoffset</code> (Number) – Custom Y offset to scroll to
+  - <code>safearea</code> (Number) – Additional safe area offset (default: <code>0</code>)</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.setContentInsets(
+  { top: 0, right: 0, bottom: 48, left: 0 },
+  { animated: true, duration: 300, safearea: 34 }
+);
+</code></p>
+
+<h4><code>appendRowBeforeRow(row)</code></h4>
+
+<p>Inserts a row at the top of the table with automatic scroll offset adjustment.</p>
+
+<p><strong>Parameters:</strong>
+- <code>row</code> (Ti.UI.TableViewRow) – The row to insert</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+const newRow = Ti.UI.createTableViewRow({ title: &#39;New Item&#39; });
+tableView.appendRowBeforeRow(newRow);
+</code></p>
+
+<h3>TableView Events</h3>
+
+<h4><code>rowvisible</code></h4>
+
+<p>Fired when a table row becomes visible. Throttled to 30fps (60fps on ProMotion displays) to prevent jank.</p>
+
+<p><strong>Event Properties:</strong>
+- <code>section</code> (Ti.UI.TableViewSection) – The section
+- <code>index</code> (Number) – Global row index
+- <code>topOffset</code> (Number) – Y position in superview
+- <code>row</code> (Ti.UI.TableViewRow) – The row proxy
+- <code>rowData</code> (Ti.UI.TableViewRow) – Same as <code>row</code>
+- <code>isVisible</code> (Number) – Always <code>1</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.addEventListener(&#39;rowvisible&#39;, function(e) {
+  console.log(`Row ${e.index} visible at: ${e.topOffset}`);
+});
+</code></p>
+
+<h4><code>rownotvisible</code></h4>
+
+<p>Fired when a table row scrolls out of view. Throttled to 30fps (60fps on ProMotion displays).</p>
+
+<p><strong>Event Properties:</strong>
+- <code>section</code> (Ti.UI.TableViewSection)
+- <code>index</code> (Number)
+- <code>topOffset</code> (Number)
+- <code>row</code> (Ti.UI.TableViewRow)
+- <code>rowData</code> (Ti.UI.TableViewRow)</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.addEventListener(&#39;rownotvisible&#39;, function(e) {
+  // Pause media, cleanup resources
+});
+</code></p>
+
+<h4><code>scroll</code> <em>(v2.3.0+)</em></h4>
+
+<p>Fired continuously while the table view is scrolling. Throttled to 30fps (60fps on ProMotion).</p>
+
+<p><strong>Event Properties:</strong>
+- <code>contentOffset</code> (Object) – Current scroll position with <code>x</code> and <code>y</code>
+- <code>contentSize</code> (Object) – Total scrollable content size with <code>width</code> and <code>height</code>
+- <code>size</code> (Object) – Visible table view bounds with <code>width</code> and <code>height</code>
+- <code>velocity</code> (Object) – Scroll velocity with <code>x</code> and <code>y</code> (pixels/second)</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.addEventListener(&#39;scroll&#39;, function(e) {
+  console.log(`Scroll: y=${e.contentOffset.y}, velocity: ${e.velocity.y}`);
+});
+</code></p>
+
+<h4><code>scrollend</code> <em>(v2.3.0+)</em></h4>
+
+<p>Fired when scrolling ends (user releases or deceleration completes).</p>
+
+<p><strong>Event Properties:</strong>
+- <code>contentOffset</code> (Object) – Final scroll position with <code>x</code> and <code>y</code>
+- <code>contentSize</code> (Object) – Total scrollable content size
+- <code>size</code> (Object) – Visible table view bounds
+- <code>velocity</code> (Object) – Final velocity with <code>x</code> and <code>y</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.addEventListener(&#39;scrollend&#39;, function(e) {
+  console.log(`Scroll ended at: y=${e.contentOffset.y}`);
+});
+</code></p>
+
+<h4><code>pan</code></h4>
+
+<p>Fired during pan gestures (requires <code>panGesture = true</code>).</p>
+
+<p><strong>Event Properties:</strong>
+- <code>translation</code> (Object) – <code>{ x, y }</code> translation values
+- <code>velocity</code> (Object) – <code>{ x, y }</code> velocity values</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.panGesture = true;
+tableView.addEventListener(&#39;pan&#39;, function(e) {
+  console.log(`Pan: ${e.translation.x}, ${e.translation.y}`);
+});
+</code></p>
+
+<h4><code>panend</code></h4>
+
+<p>Fired when a pan gesture ends.</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+tableView.addEventListener(&#39;panend&#39;, function() {
+  console.log(&#39;Pan ended&#39;);
+});
+</code></p>
+
+<h3>Row Properties</h3>
+
+<h4><code>isVisible</code></h4>
+
+<p>Checks if a row is visible in the viewport.</p>
+
+<p><strong>Type:</strong> <code>Number</code> – <code>0</code> (not visible) or <code>1</code> (visible)</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+const row = tableView.data[0].rows[5];
+if (row.isVisible === 1) {
+  console.log(&#39;Row is visible&#39;);
+}
+</code></p>
+
+<h4><code>getTopOffset</code></h4>
+
+<p>Gets the Y position of the row relative to the superview.</p>
+
+<p><strong>Type:</strong> <code>Number</code> – Y offset in points</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+const yOffset = tableView.data[0].rows[10].getTopOffset;
+</code></p>
+
+<h4><code>opaqueRow</code></h4>
+
+<p>Makes the row and its subviews opaque for optimized rendering performance, while preserving selection visibility.</p>
+
+<p><strong>Type:</strong> <code>Boolean</code></p>
+
+<p><strong>Example:</strong>
+<code>javascript
+const row = Ti.UI.createTableViewRow({
+  title: &#39;Optimized Row&#39;,
+  backgroundColor: &#39;#ffffff&#39;,
+  backgroundSelectedColor: &#39;#e0e0e0&#39;
+});
+row.opaqueRow = true; // All subviews become opaque, selection colors show during touch
+</code></p>
+
+<h3>ScrollView Methods</h3>
+
+<h4><code>scrollToBottomNoAnim()</code></h4>
+
+<p>Scrolls to the bottom without animation.</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+scrollView.scrollToBottomNoAnim();
+</code></p>
+
+<h4><code>setContentInsets(insets, options)</code></h4>
+
+<p>Same signature as TableView <code>setContentInsets</code>.</p>
+
+<p><strong>Parameters:</strong>
+- <code>insets</code> (Object) – Content inset values with <code>top</code>, <code>right</code>, <code>bottom</code>, <code>left</code>
+- <code>options</code> (Object) – Configuration object:
+  - <code>animated</code> (Boolean) – Animate the change (default: <code>false</code>)
+  - <code>duration</code> (Number) – Animation duration in ms (default: <code>180</code>)
+  - <code>safearea</code> (Number) – Additional safe area offset (default: <code>0</code>)</p>
+
+<p><strong>Example:</strong>
+<code>javascript
+scrollView.setContentInsets(
+  { top: 0, right: 0, bottom: 48, left: 0 },
+  { animated: true, duration: 300, safearea: 34 }
+);
+</code></p>
+
+<h3>View Properties</h3>
+
+<h4><code>opaque</code> <em>(v2.3.0+)</em></h4>
+
+<p>The <code>opaque</code> property for <code>Ti.UI.View</code> was removed in v2.3.0. Use <code>opaqueRow</code> on <code>Ti.UI.TableViewRow</code> instead for optimized rendering.</p>
+
+<h2>Usage</h2>
+
+<h3>Complete Example</h3>
+
+<p><code></code>`javascript
+import tableviewextension from &#39;de.marcbender.tableviewextension&#39;;</p>
+
+<p>const win = Ti.UI.createWindow();
+const tableView = Ti.UI.createTableView({
+  data: [
+    Ti.UI.createTableViewRow({ title: &#39;Row 1&#39; }),
+    Ti.UI.createTableViewRow({ title: &#39;Row 2&#39; })
+  ]
+});</p>
+
+<p>// Track visibility
+tableView.addEventListener(&#39;rowvisible&#39;, function(e) {
+  console.log(<code>Row ${e.index} is visible</code>);
+});</p>
+
+<p>// Load more on scroll to top
+tableView.addEventListener(&#39;scroll&#39;, function(e) {
+  if (e.contentOffset &lt;= 0) {
+    const newRow = Ti.UI.createTableViewRow({ title: &#39;New Row&#39; });
+    tableView.appendRowBeforeRow(newRow);
+  }
+});</p>
+
+<p>win.add(tableView);
+win.open();
+<code></code>`</p>
+
+<h2>Author</h2>
+
+<p>Marc Bender – marc_bender@icloud.com</p>
+
+<h2>License</h2>
+
+<p>Copyright (c) 2026 by Marc Bender</p>

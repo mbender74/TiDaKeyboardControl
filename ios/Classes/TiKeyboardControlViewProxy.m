@@ -1315,19 +1315,19 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // Log keyboard frame info
     CGRect keyboardStartFrame;
     [[notification.userInfo valueForKey:UIKeyboardFrameBeginUserInfoKey] getValue:&keyboardStartFrame];
-    NSLog(@"[KEYBOARD] WillShow: start={{%.0f,%.0f},{%.0f,%.0f}} end={{%.0f,%.0f},{%.0f,%.0f}} duration=%f curve=%ld",
-          keyboardStartFrame.origin.x, keyboardStartFrame.origin.y, keyboardStartFrame.size.width, keyboardStartFrame.size.height,
-          keyboardEndFrameWindow.origin.x, keyboardEndFrameWindow.origin.y, keyboardEndFrameWindow.size.width, keyboardEndFrameWindow.size.height,
-          keyboardTransitionDuration, (long)self->animationCurve);
+    // NSLog(@"[KEYBOARD] WillShow: start={{%.0f,%.0f},{%.0f,%.0f}} end={{%.0f,%.0f},{%.0f,%.0f}} duration=%f curve=%ld",
+    //       keyboardStartFrame.origin.x, keyboardStartFrame.origin.y, keyboardStartFrame.size.width, keyboardStartFrame.size.height,
+    //       keyboardEndFrameWindow.origin.x, keyboardEndFrameWindow.origin.y, keyboardEndFrameWindow.size.width, keyboardEndFrameWindow.size.height,
+    //       keyboardTransitionDuration, (long)self->animationCurve);
     
     // iOS 16+ UIKeyboardLayoutGuide logging
     if (@available(iOS 16.0, *)) {
         UIWindow *window = [self resolveKeyWindow];
         if (window) {
             UILayoutGuide *guide = [window safeAreaLayoutGuide];
-            NSLog(@"[IOS16+] LayoutGuide available: safeArea={{%.0f,%.0f},{%.0f,%.0f}}", 
-                  guide.layoutFrame.origin.x, guide.layoutFrame.origin.y, 
-                  guide.layoutFrame.size.width, guide.layoutFrame.size.height);
+            // NSLog(@"[IOS16+] LayoutGuide available: safeArea={{%.0f,%.0f},{%.0f,%.0f}}", 
+            //       guide.layoutFrame.origin.x, guide.layoutFrame.origin.y, 
+            //       guide.layoutFrame.size.width, guide.layoutFrame.size.height);
         }
     }
     
@@ -1338,14 +1338,14 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         CGFloat totalDelta = endY - startY;
         
         int frameCount = (int)(keyboardTransitionDuration * 60);
-        NSLog(@"[INTERP-LINEAR] startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d",
-              startY, endY, totalDelta, keyboardTransitionDuration, frameCount);
+        // NSLog(@"[INTERP-LINEAR] startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d",
+        //       startY, endY, totalDelta, keyboardTransitionDuration, frameCount);
         
         for (int i = 0; i < frameCount; i++) {
             CGFloat progress = (CGFloat)i / (CGFloat)frameCount;
             CGFloat interpolatedY = startY + (totalDelta * progress);
-            NSLog(@"[INTERP-LINEAR] frame[%2d/%2d] t=%.3fs y=%.1f", 
-                  i, frameCount, (keyboardTransitionDuration * progress), interpolatedY);
+            // NSLog(@"[INTERP-LINEAR] frame[%2d/%2d] t=%.3fs y=%.1f", 
+            //       i, frameCount, (keyboardTransitionDuration * progress), interpolatedY);
         }
     }
     
@@ -1361,8 +1361,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         CGFloat mass = 1.0;
         
         int frameCount = (int)(keyboardTransitionDuration * 60);
-        NSLog(@"[INTERP-SPRING] startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d damping=%.2f stiffness=%.0f",
-              startY, endY, totalDelta, keyboardTransitionDuration, frameCount, damping, stiffness);
+        // NSLog(@"[INTERP-SPRING] startY=%.0f endY=%.0f delta=%.0f duration=%fs frames=%d damping=%.2f stiffness=%.0f",
+        //       startY, endY, totalDelta, keyboardTransitionDuration, frameCount, damping, stiffness);
         
         // Simple spring simulation (eased out)
         for (int i = 0; i < frameCount; i++) {
@@ -1372,8 +1372,8 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             CGFloat c3 = c1 + 1.0;
             CGFloat eased = 1.0 + c3 * pow(t - 1.0, 3.0) + c1 * pow(t - 1.0, 2.0);
             CGFloat interpolatedY = startY + (totalDelta * eased);
-            NSLog(@"[INTERP-SPRING] frame[%2d/%2d] t=%.3fs y=%.1f", 
-                  i, frameCount, (keyboardTransitionDuration * t), interpolatedY);
+            // NSLog(@"[INTERP-SPRING] frame[%2d/%2d] t=%.3fs y=%.1f", 
+            //       i, frameCount, (keyboardTransitionDuration * t), interpolatedY);
         }
     }
     

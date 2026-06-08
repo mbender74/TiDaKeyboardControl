@@ -1,0 +1,133 @@
+<h1>RainConfetti Feature Integration Plan</h1>
+
+<h2>Overview</h2>
+
+<p>Integrate features from <a href="https://github.com/linghugoogle/RainConfetti">RainConfetti</a> into titanium-emitterview for enhanced particle effects.</p>
+
+<hr/>
+
+<h2>New Properties</h2>
+
+<h3>Core Properties</h3>
+
+<p>| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| <code>mode</code> | String | <code>&#39;layer&#39;</code> | <code>&#39;layer&#39;</code> (current) or <code>&#39;emitter&#39;</code> (CAEmitterLayer on iOS) |
+| <code>particleType</code> | String | <code>&#39;custom&#39;</code> | <code>&#39;confetti&#39;</code>, <code>&#39;triangle&#39;</code>, <code>&#39;star&#39;</code>, <code>&#39;diamond&#39;</code>, <code>&#39;text&#39;</code>, <code>&#39;custom&#39;</code> |
+| <code>intensity</code> | Number | <code>0.5</code> | Particle birth rate (0.0-1.0) |
+| <code>colors</code> | Array | <code>[]</code> | Array of color hex strings for multi-color particles |
+| <code>text</code> | String | <code>&#39;&#39;</code> | Text to use as particles (each character = one particle) |
+| <code>font</code> | Object | <code>{}</code> | <code>{ fontSize: 24, fontFamily: &#39;Arial&#39;, fontWeight: &#39;bold&#39; }</code> |
+| <code>velocity</code> | Number | <code>350</code> | Particle fall speed |
+| <code>velocityRange</code> | Number | <code>80</code> | Random velocity variation |
+| <code>spin</code> | Number | <code>0</code> | Rotation speed (degrees per second) |
+| <code>spinRange</code> | Number | <code>0</code> | Random rotation variation |
+| <code>duration</code> | Number | <code>0</code> | Auto-stop duration in seconds (0 = never stop) |
+| <code>autoRemove</code> | Boolean | <code>false</code> | Remove view from parent after duration |</p>
+
+<h3>Animation Methods</h3>
+
+<p>| Method | Description |
+|--------|-------------|
+| <code>start()</code> | Start/confetti emission |
+| <code>stop()</code> | Stop emission |
+| <code>pause()</code> | Pause animation |
+| <code>resume()</code> | Resume animation |
+| <code>isActive()</code> | Returns true if currently emitting |</p>
+
+<hr/>
+
+<h2>Implementation Phases</h2>
+
+<h3>Phase 1: Core Properties (iOS + Android)</h3>
+
+<ul><li>[x] Add <code>intensity</code> property (controls birth rate)</li><li>[x] Add <code>colors</code> array property</li><li>[x] Add <code>spin</code> and <code>spinRange</code> for rotation</li><li>[x] Add <code>velocity</code> and <code>velocityRange</code></li><li>[x] Add <code>duration</code> for auto-stop</li></ul>
+
+<h3>Phase 2: Particle Types (iOS + Android)</h3>
+
+<ul><li>[x] Add <code>particleType</code> enum</li><li>[x] Generate built-in shapes programmatically:<ul><li><code>confetti</code> — rectangular with random aspect ratio</li><li><code>triangle</code> — isosceles triangle</li><li><code>star</code> — 5-pointed star</li><li><code>diamond</code> — rhombus shape</li></ul></li><li>[x] Use shapes when <code>particleType</code> != <code>&#39;custom&#39;</code></li></ul>
+
+<h3>Phase 3: Text Particles (iOS + Android)</h3>
+
+<ul><li>[x] Add <code>text</code> property</li><li>[x] Add <code>font</code> property</li><li>[x] Split text into individual characters</li><li>[x] Each character = one particle with independent animation</li><li>[x] Support emoji and Unicode</li></ul>
+
+<h3>Phase 4: Animation Control (iOS + Android)</h3>
+
+<ul><li>[x] Add <code>start()</code> method</li><li>[x] Add <code>stop()</code> method</li><li>[x] Add <code>pause()</code> method</li><li>[x] Add <code>resume()</code> method</li><li>[x] Add <code>isActive()</code> method</li><li>[x] Add <code>autoRemove</code> property</li></ul>
+
+<h3>Phase 5: Documentation + Examples</h3>
+
+<ul><li>[x] Update README with new properties</li><li>[x] Add comprehensive examples</li><li>[x] Update API documentation</li></ul>
+
+<hr/>
+
+<h2>Platform Notes</h2>
+
+<h3>iOS</h3>
+
+<ul><li>Uses <code>CAEmitterLayer</code> + <code>CAEmitterCell</code> for emitter mode</li><li>Built-in shapes drawn with <code>UIGraphicsImageRenderer</code></li><li>Text particles use <code>NSAttributedString</code></li></ul>
+
+<h3>Android</h3>
+
+<ul><li>Uses <code>ObjectAnimator</code> + View Pooling (already optimized)</li><li>Built-in shapes drawn with <code>Bitmap</code> + <code>Canvas</code> + <code>Paint</code></li><li>Text particles use <code>Paint</code> + <code>StaticLayout</code></li></ul>
+
+<hr/>
+
+<h2>Example Usage</h2>
+
+<p><code></code>`javascript
+var emitterModule = require(&#39;de.marcbender.emitterview&#39;);</p>
+
+<p>// Classic confetti with colors
+var confetti = emitterModule.createView({
+    particleType: &#39;confetti&#39;,
+    colors: [&#39;#ff0000&#39;, &#39;#00ff00&#39;, &#39;#0000ff&#39;, &#39;#ffff00&#39;],
+    intensity: 0.7,
+    velocity: 400,
+    spin: 5,
+    spinRange: 3,
+    duration: 5.0
+});</p>
+
+<p>win.add(confetti);
+confetti.start();</p>
+
+<p>// Text confetti
+var textEmitter = emitterModule.createView({
+    particleType: &#39;text&#39;,
+    text: &#39;🎉🎊🥳🎈&#39;,
+    font: { fontSize: 32 },
+    intensity: 0.5,
+    duration: 3.0
+});</p>
+
+<p>win.add(textEmitter);
+textEmitter.start();</p>
+
+<p>// Star shower
+var stars = emitterModule.createView({
+    particleType: &#39;star&#39;,
+    colors: [&#39;#ffd700&#39;, &#39;#ff6b6b&#39;, &#39;#4ecdc4&#39;],
+    intensity: 0.8,
+    velocity: 500,
+    spin: 10
+});</p>
+
+<p>win.add(stars);
+stars.start();</p>
+
+<p>// Animation control
+setTimeout(function() {
+    confetti.pause();
+}, 2000);</p>
+
+<p>setTimeout(function() {
+    confetti.resume();
+}, 4000);
+<code></code>`</p>
+
+<hr/>
+
+<h2>Status: ✅ COMPLETE</h2>
+
+<p>All phases implemented and tested on iOS and Android.</p>

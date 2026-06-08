@@ -1,0 +1,1120 @@
+<h1>ti.popover Module</h1>
+
+<h2>Description</h2>
+
+<p>A fully custom iOS Popover implementation for Appcelerator Titanium. Draws its own arrow and border using <code>UIBezierPath</code>, positions itself relative to a source view, and handles dismiss via tap gesture.</p>
+
+<p>Designed to mirror the <a href="https://titaniumsdk.com/api/titanium/ui/ipad/popover.html">Titanium <code>Ti.UI.iPad.Popover</code></a> API while adding extensive appearance customization — frosted glass blur effects, dim backgrounds, multiple transition styles, and per-popover visual tuning.</p>
+
+<p><strong>Platform:</strong> iOS only<br/><strong>Module ID:</strong> <code>ti.popover</code></p>
+
+<hr/>
+
+<h2>Quick Start</h2>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>// 1. Create the content view
+var contentView = Ti.UI.createView({
+    width: 250,
+    height: 200,
+    backgroundColor: &#39;#ffffff&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Hello from Popover!&#39;,
+    color: &#39;#333&#39;,
+    top: 10,
+    left: 10,
+    right: 10
+}));</p>
+
+<p>// 2. Create the popover
+var popover = ti_popover.createPopover({
+    contentView: contentView
+});</p>
+
+<p>// 3. Show it anchored to a button
+var button = Ti.UI.createButton({
+    title: &#39;Show Popover&#39;,
+    top: 50,
+    width: 200,
+    height: 44
+});</p>
+
+<p>button.addEventListener(&#39;click&#39;, function() {
+    popover.show({
+        view: button
+    });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<hr/>
+
+<h2>API Reference</h2>
+
+<h3>Module-Level Factory</h3>
+
+<h4><code>ti_popover.createPopover(args)</code></h4>
+
+<p>Creates a new Popover instance.</p>
+
+<p>| Property     | Type     | Description                                      |
+|-------------|----------|--------------------------------------------------|
+| <code>contentView</code> | <code>Ti.UI.View</code> or <code>Ti.UI.Window</code> | <strong>Required.</strong> The view displayed inside the popover. |
+| <code>arrowDirection</code> | <code>Number</code> | Arrow direction constant (see below). Default: <code>POPOVER_ARROW_DIRECTION_ANY</code> (auto-detect). |
+| <code>cornerRadius</code> | <code>Number</code> | Corner radius in DIP. Default: <code>10</code>. |
+| <code>arrowWidth</code> | <code>Number</code> | Arrow base width in DIP. Default: <code>30</code>. |
+| <code>arrowHeight</code> | <code>Number</code> | Arrow height (tip-to-base) in DIP. Default: <code>15</code>. |
+| <code>borderWidth</code> | <code>Number</code> | Border stroke width in DIP. Default: <code>0</code> (no border). |
+| <code>borderColor</code> | <code>String</code> | Border color as hex string (e.g. <code>&#39;#333333&#39;</code>). Default: none. |
+| <code>shadowRadius</code> | <code>Number</code> | Shadow blur radius in DIP. Default: <code>5</code>. |
+| <code>shadowOpacity</code> | <code>Number</code> | Shadow opacity (0.0–1.0). Default: <code>0.3</code>. |
+| <code>backgroundColor</code> | <code>String</code> | Popover body background color. Default: white (<code>#ffffff</code>). |
+| <code>showsArrow</code> | <code>Boolean</code> | Whether to display the arrow. Default: <code>true</code>. |
+| <code>showsDimBackground</code> | <code>Boolean</code> | Dim the background behind the popover. Default: <code>false</code>. |
+| <code>blurBackground</code> | <code>Boolean</code> | Apply frosted glass blur to the background behind the popover. Default: <code>false</code>. |
+| <code>blurEffect</code> | <code>Number</code> | Blur effect style for the background (see constants). Default: <code>Light</code>. |
+| <code>transitionStyle</code> | <code>Number</code> / <code>String</code> | Animation style (see constants). Default: <code>scale</code>. |
+| <code>transitionDuration</code> | <code>Number</code> | Animation duration in seconds (0.0–1.0). Default: auto (0.38s for scale, 0.25s for fade/translate). |
+| <code>dismissOnTapOutside</code> | <code>Boolean</code> | Auto-dismiss when tapping outside. Default: <code>true</code>. |
+| <code>popoverBlurStyle</code> | <code>Number</code> | Frosted glass blur for the popover body itself. Default: <code>-1</code> (solid color). |
+| <code>safeAreaInsets</code> | <code>Object</code> | Object with <code>top</code>, <code>left</code>, <code>bottom</code>, <code>right</code> (DIP). Default: <code>10</code> on all sides. |</p>
+
+<hr/>
+
+<h3>Instance Methods</h3>
+
+<h4><code>popover.show(args)</code></h4>
+
+<p>Presents the popover anchored to a source view.</p>
+
+<p>| Property          | Type       | Description                                                                  |
+|-------------------|------------|------------------------------------------------------------------------------|
+| <code>view</code>            | <code>Ti.UI.View</code> | <strong>Required.</strong> The source view the popover anchors to.                          |
+| <code>rect</code>            | <code>Object</code>   | Offset relative to the source view&#39;s position (<code>{x, y}</code> or <code>{left, top}</code>). Optionally includes <code>width</code>/<code>height</code> to override the source view&#39;s anchor size. When only <code>x</code>/<code>y</code> are set, the source view&#39;s own width/height are preserved. |
+| <code>animated</code>        | <code>Boolean</code>  | Animate the presentation. Default: <code>true</code>.                                    |
+| <code>cornerRadius</code>    | <code>Number</code>   | Override corner radius for this presentation.                                  |
+| <code>arrowWidth</code>      | <code>Number</code>   | Override arrow base width for this presentation.                               |
+| <code>arrowHeight</code>     | <code>Number</code>   | Override arrow height for this presentation.                                   |
+| <code>borderWidth</code>     | <code>Number</code>   | Override border width for this presentation.                                   |
+| <code>borderColor</code>     | <code>String</code>   | Override border color for this presentation.                                   |
+| <code>shadowRadius</code>    | <code>Number</code>   | Override shadow radius for this presentation.                                  |
+| <code>shadowOpacity</code>   | <code>Number</code>   | Override shadow opacity for this presentation.                                 |
+| <code>backgroundColor</code>  | <code>String</code>   | Override background color for this presentation.                               |
+| <code>showsArrow</code>      | <code>Boolean</code>  | Override: show/hide arrow for this presentation.                               |
+| <code>showsDimBackground</code> | <code>Boolean</code> | Override: dim background for this presentation.                                |
+| <code>blurBackground</code>  | <code>Boolean</code>  | Override: blur background for this presentation.                               |
+| <code>transitionStyle</code> | <code>Number</code> / <code>String</code> | Override transition for this presentation.                                  |
+| <code>transitionDuration</code> | <code>Number</code> | Override animation duration (0.0–1.0 seconds) for this presentation.       |
+| <code>dismissOnTapOutside</code> | <code>Boolean</code> | Override: dismiss on outside tap for this presentation.                       |
+| <code>popoverBlurStyle</code>| <code>Number</code>   | Override popover body blur for this presentation.                              |
+| <code>safeAreaInsets</code>  | <code>Object</code>   | Override safe area insets for this presentation.                               |</p>
+
+<blockquote><p><strong>Note:</strong> All appearance properties that can be set at <code>createPopover</code> time can also be passed to <code>show()</code>. Values passed to <code>show()</code> override the creation-time values for that specific presentation.</p></blockquote>
+
+<h4><code>popover.hide(args)</code></h4>
+
+<p>Dismisses the popover.</p>
+
+<p>| Property           | Type             | Description                                                                 |
+|--------------------|-----------------|-----------------------------------------------------------------------------|
+| <code>animated</code>         | <code>Boolean</code>       | Animate the dismissal. Default: <code>false</code>.                                     |
+| <code>transitionStyle</code>  | <code>Number</code> / <code>String</code> | Override transition for dismissal. If not passed, the presentation transition style is reused. |
+| <code>transitionDuration</code> | <code>Number</code>      | Override animation duration (0.0–1.0 seconds) for dismissal.                |</p>
+
+<hr/>
+
+<h3>Instance Properties</h3>
+
+<p>Set these after <code>createPopover()</code> but <strong>before</strong> calling <code>show()</code>. Changing them while the popover is visible has no effect.</p>
+
+<h4><code>popover.arrowDirection</code></h4>
+
+<p>| Type    | Default                           |
+|---------|-----------------------------------|
+| <code>Number</code> | <code>ti_popover.POPOVER_ARROW_DIRECTION_ANY</code> |</p>
+
+<p>Controls the arrow direction. If set to <code>POPOVER_ARROW_DIRECTION_ANY</code>, the module auto-detects the best direction based on available space around the source view. Setting an explicit direction forces the arrow to that side regardless of space.</p>
+
+<h4><code>popover.contentView</code></h4>
+
+<p>| Type              |
+|-------------------|
+| <code>Ti.UI.View</code> or <code>Ti.UI.Window</code> |</p>
+
+<p>The view shown inside the popover. Width and height should be set on the content view itself (using DIP values).</p>
+
+<h4><code>popover.popoverBlurStyle</code></h4>
+
+<p>| Type     | Default |
+|----------|---------|
+| <code>Number</code> | <code>-1</code>    |</p>
+
+<p>Sets a frosted glass (blur) effect on the popover body itself. Pass a blur effect style constant (e.g. <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_MATERIAL_LIGHT</code>). Set to <code>-1</code> for solid color.</p>
+
+<hr/>
+
+<h3>Events</h3>
+
+<h4><code>&#39;closed&#39;</code></h4>
+
+<p>Fired when the popover has finished dismissing and its views are cleaned up.</p>
+
+<p><code>javascript
+popover.addEventListener(&#39;closed&#39;, function(e) {
+    Ti.API.info(&#39;Popover was closed&#39;);
+});
+</code></p>
+
+<h4><code>&#39;hide&#39;</code></h4>
+
+<p>Fired when the user taps outside the popover (triggers auto-dismiss). This fires <strong>before</strong> the hide animation begins.</p>
+
+<p><code>javascript
+popover.addEventListener(&#39;hide&#39;, function(e) {
+    Ti.API.info(&#39;User tapped outside — popover will dismiss&#39;);
+});
+</code></p>
+
+<hr/>
+
+<h3>Constants</h3>
+
+<h4>Arrow Direction — Standard</h4>
+
+<p>| Constant                                      | Description                                      |
+|-----------------------------------------------|--------------------------------------------------|
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_UP</code>       | Arrow points up (popover appears <strong>below</strong> the source view). |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_DOWN</code>     | Arrow points down (popover appears <strong>above</strong> the source view). |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_LEFT</code>     | Arrow points left (popover appears to the <strong>right</strong> of the source view). |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_RIGHT</code>    | Arrow points right (popover appears to the <strong>left</strong> of the source view). |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_ANY</code>      | Auto-detect the best direction based on available screen space. |</p>
+
+<blockquote><p><strong>Auto-detect priority:</strong> Up &gt; Down &gt; Left &gt; Right. The module checks each direction in order and picks the first one with sufficient space.</p></blockquote>
+
+<h4>Arrow Direction — Extended (Corner-Anchored)</h4>
+
+<p>Extended directions position the arrow at a specific corner of the popover and anchor the popover there, extending away from the edge. The arrow sits at a safe distance from the rounded corner.</p>
+
+<p>| Constant                                                    | Arrow Position | Popover Extends |
+|-------------------------------------------------------------|---------------|------------------|
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_RIGHT_TOP</code>              | Right edge, top | Down |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_RIGHT_BOTTOM</code>           | Right edge, bottom | Up |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_LEFT_TOP</code>               | Left edge, top | Down |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_LEFT_BOTTOM</code>            | Left edge, bottom | Up |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_UP_LEFT</code>                | Top edge, left | Right |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_UP_RIGHT</code>               | Top edge, right | Left |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_DOWN_LEFT</code>              | Bottom edge, left | Right |
+| <code>ti_popover.POPOVER_ARROW_DIRECTION_DOWN_RIGHT</code>             | Bottom edge, right | Left |</p>
+
+<blockquote><p><strong>Example:</strong> <code>RIGHT_TOP</code> — the arrow is positioned at the upper-right corner of the popover, pointing right toward the source view. The popover body extends downward from the arrow.</p></blockquote>
+
+<p><code>javascript
+var popover = ti_popover.createPopover({
+    contentView: contentView,
+    arrowDirection: ti_popover.POPOVER_ARROW_DIRECTION_RIGHT_TOP
+});
+</code></p>
+
+<h4>Transition Style</h4>
+
+<p>| Constant                                  | Value    | Description                                                  |
+|-------------------------------------------|----------|--------------------------------------------------------------|
+| <code>ti_popover.TRANSITION_STYLE_SCALE</code>       | <code>&#39;scale&#39;</code> / <code>0</code> | Spring-scale animation from the arrow point (default).    |
+| <code>ti_popover.TRANSITION_STYLE_FADE</code>        | <code>&#39;fade&#39;</code> / <code>1</code>  | Simple fade-in/fade-out.                                   |
+| <code>ti_popover.TRANSITION_STYLE_TRANSLATE</code>   | <code>&#39;translate&#39;</code> / <code>2</code> | Slide in from the arrow direction, slide out the same way. |
+| <code>ti_popover.TRANSITION_STYLE_NONE</code>        | <code>&#39;none&#39;</code> / <code>3</code>  | No animation — instant show/hide.                          |</p>
+
+<blockquote><p>Pass either the string or the numeric value to <code>transitionStyle</code>. The module accepts both.</p></blockquote>
+
+<h4>Blur Effect Style — Background &amp; Popover Body</h4>
+
+<p>These constants can be used for <code>blurEffect</code> (background blur behind popover) and <code>popoverBlurStyle</code> (frosted glass on popover body).</p>
+
+<p>| Constant                                                        | Description                    |
+|-----------------------------------------------------------------|--------------------------------|
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_ULTRA_THIN_MATERIAL</code>       | Ultra-thin material (default tint) |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_THIN_MATERIAL</code>             | Thin material                  |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_MATERIAL</code>                  | Standard material              |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_THICK_MATERIAL</code>            | Thick material                 |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_CHROME_MATERIAL</code>           | Chrome material                |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_ULTRA_THIN_MATERIAL_LIGHT</code> | Ultra-thin material (light tint) |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_THIN_MATERIAL_LIGHT</code>       | Thin material (light tint)     |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_MATERIAL_LIGHT</code>            | Standard material (light tint) |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_THICK_MATERIAL_LIGHT</code>      | Thick material (light tint)    |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_CHROME_MATERIAL_LIGHT</code>     | Chrome material (light tint)   |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_ULTRA_THIN_MATERIAL_DARK</code>  | Ultra-thin material (dark tint) |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_THIN_MATERIAL_DARK</code>        | Thin material (dark tint)      |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_MATERIAL_DARK</code>             | Standard material (dark tint)  |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_THICK_MATERIAL_DARK</code>       | Thick material (dark tint)     |
+| <code>ti_popover.BLUR_EFFECT_STYLE_SYSTEM_CHROME_MATERIAL_DARK</code>      | Chrome material (dark tint)    |</p>
+
+<blockquote><p><strong>Important:</strong> If the user has enabled <em>Reduce Transparency</em> in iOS Settings → Accessibility, blur effects are automatically disabled and the popover falls back to solid colors.</p></blockquote>
+
+<hr/>
+
+<h2>Examples</h2>
+
+<h3>Basic Popover</h3>
+
+<p>A simple popover anchored to a button with default settings (white background, arrow, scale animation).</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 280,
+    height: 180,
+    backgroundColor: &#39;#ffffff&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Hello World!&#39;,
+    font: { fontSize: 18, fontWeight: &#39;bold&#39; },
+    color: &#39;#333&#39;,
+    top: 15,
+    left: 15,
+    right: 15
+}));
+contentView.add(Ti.UI.createLabel({
+    text: &#39;This is a basic popover example.&#39;,
+    font: { fontSize: 14 },
+    color: &#39;#666&#39;,
+    top: 45,
+    left: 15,
+    right: 15
+}));
+contentView.add(Ti.UI.createButton({
+    title: &#39;Close&#39;,
+    bottom: 15,
+    right: 15,
+    width: 80,
+    height: 32
+}));</p>
+
+<p>var popover = ti_popover.createPopover({
+    contentView: contentView
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Show Popover&#39;,
+    width: 200,
+    height: 44,
+    top: 100
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: button });
+});</p>
+
+<p>contentView.children[2].addEventListener(&#39;click&#39;, function() {
+    popover.hide({ animated: true });
+});</p>
+
+<p>win.add(button);
+win.open();
+<code></code>`</p>
+
+<h3>Frosted Glass Popover</h3>
+
+<p>A translucent popover with a blur effect on the body and a dimmed background.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 260,
+    height: 200,
+    backgroundColor: &#39;transparent&#39; // transparent so the blur shows through
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Frosted Glass&#39;,
+    font: { fontSize: 20, fontWeight: &#39;bold&#39; },
+    color: &#39;#ffffff&#39;,
+    top: 15,
+    left: 15
+}));
+contentView.add(Ti.UI.createLabel({
+    text: &#39;The popover body has a frosted glass effect. Notice how it blurs the content behind it.&#39;,
+    font: { fontSize: 14 },
+    color: &#39;#ffffff&#39;,
+    top: 45,
+    left: 15,
+    right: 15
+}));</p>
+
+<p>var popover = ti<em>popover.createPopover({
+    contentView: contentView,
+    popoverBlurStyle: ti</em>popover.BLUR<em>EFFECT</em>STYLE<em>SYSTEM</em>MATERIAL_LIGHT,
+    showsDimBackground: true,
+    cornerRadius: 14,
+    arrowWidth: 36,
+    arrowHeight: 18
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Frosted Glass Popover&#39;,
+    style: Ti.UI.iPhone.SystemButtonStyle.BORDERED,
+    top: 100,
+    width: 250
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: button });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#a0d8ef&#39; });
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<h3>Popover with Border and Shadow</h3>
+
+<p>A styled popover with a custom border, shadow, and rounded corners.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 300,
+    height: 220,
+    backgroundColor: &#39;#ffffff&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Styled Popover&#39;,
+    font: { fontSize: 18, fontWeight: &#39;bold&#39; },
+    color: &#39;#2c3e50&#39;,
+    top: 15,
+    left: 15,
+    right: 15
+}));
+contentView.add(Ti.UI.createLabel({
+    text: &#39;This popover has a colored border, shadow, and larger corner radius.&#39;,
+    font: { fontSize: 14 },
+    color: &#39;#7f8c8d&#39;,
+    top: 45,
+    left: 15,
+    right: 15
+}));</p>
+
+<p>var popover = ti<em>popover.createPopover({
+    contentView: contentView,
+    cornerRadius: 16,
+    borderWidth: 2,
+    borderColor: &#39;#3498db&#39;,
+    shadowRadius: 10,
+    shadowOpacity: 0.4,
+    arrowWidth: 40,
+    arrowHeight: 20,
+    transitionStyle: ti</em>popover.TRANSITION<em>STYLE</em>TRANSLATE
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Styled Popover&#39;,
+    top: 100,
+    width: 200,
+    height: 44
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: button });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#ecf0f1&#39; });
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<h3>Arrow Direction Control</h3>
+
+<p>Force a specific arrow direction instead of auto-detection.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>function createPopover(title, arrowDir) {
+    var contentView = Ti.UI.createView({
+        width: 220,
+        height: 120,
+        backgroundColor: &#39;#ffffff&#39;
+    });
+    contentView.add(Ti.UI.createLabel({
+        text: title,
+        font: { fontSize: 16, fontWeight: &#39;bold&#39; },
+        color: &#39;#333&#39;,
+        top: 15,
+        left: 15,
+        right: 15
+    }));
+    contentView.add(Ti.UI.createLabel({
+        text: &#39;Arrow points &#39; + title.toLowerCase(),
+        font: { fontSize: 13 },
+        color: &#39;#888&#39;,
+        top: 45,
+        left: 15,
+        right: 15
+    }));</p>
+
+<pre><code>var popover = ti_popover.createPopover({
+    contentView: contentView,
+    arrowDirection: arrowDir
+});
+return popover;</code></pre>
+
+<p>}</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });</p>
+
+<p>var directions = [
+    { label: &#39;Arrow UP&#39;,    dir: ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>UP,    top: 300 },
+    { label: &#39;Arrow DOWN&#39;,  dir: ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>DOWN,  top: 40 },
+    { label: &#39;Arrow LEFT&#39;,  dir: ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>LEFT,  left: 250, top: 150 },
+    { label: &#39;Arrow RIGHT&#39;, dir: ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>RIGHT, left: 20,  top: 150 }
+];</p>
+
+<p>directions.forEach(function(item) {
+    var popover = createPopover(item.label, item.dir);
+    var button = Ti.UI.createButton({
+        title: item.label,
+        width: 120,
+        height: 44,
+        top: item.top,
+        left: item.left || 120
+    });
+    button.addEventListener(&#39;click&#39;, function() {
+        popover.show({ view: button });
+    });
+    win.add(button);
+});</p>
+
+<p>win.open();
+<code></code>`</p>
+
+<h3>Extended Arrow Directions (Corner-Anchored)</h3>
+
+<p>Extended directions place the arrow at a specific corner of the popover, and the popover extends away from that corner.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>function createPopover(title, arrowDir) {
+    var contentView = Ti.UI.createView({
+        width: 200,
+        height: 150,
+        backgroundColor: &#39;#ffffff&#39;
+    });
+    contentView.add(Ti.UI.createLabel({
+        text: title,
+        font: { fontSize: 16, fontWeight: &#39;bold&#39; },
+        color: &#39;#333&#39;,
+        top: 15,
+        left: 15,
+        right: 15
+    }));</p>
+
+<pre><code>var popover = ti_popover.createPopover({
+    contentView: contentView,
+    arrowDirection: arrowDir,
+    cornerRadius: 12
+});
+return popover;</code></pre>
+
+<p>}</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });</p>
+
+<p>// RIGHT<em>TOP: Arrow at top-right, popover extends DOWN
+var popover1 = createPopover(&#39;RIGHT</em>TOP&#39;, ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>RIGHT<em>TOP);
+var btn1 = Ti.UI.createButton({
+    title: &#39;RIGHT</em>TOP&#39;,
+    width: 160,
+    height: 44,
+    top: 80,
+    left: 200
+});
+btn1.addEventListener(&#39;click&#39;, function() {
+    popover1.show({ view: btn1 });
+});
+win.add(btn1);</p>
+
+<p>// LEFT<em>TOP: Arrow at top-left, popover extends DOWN
+var popover2 = createPopover(&#39;LEFT</em>TOP&#39;, ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>LEFT<em>TOP);
+var btn2 = Ti.UI.createButton({
+    title: &#39;LEFT</em>TOP&#39;,
+    width: 160,
+    height: 44,
+    top: 140,
+    left: 20
+});
+btn2.addEventListener(&#39;click&#39;, function() {
+    popover2.show({ view: btn2 });
+});
+win.add(btn2);</p>
+
+<p>// RIGHT<em>BOTTOM: Arrow at bottom-right, popover extends UP
+var popover3 = createPopover(&#39;RIGHT</em>BOTTOM&#39;, ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>RIGHT<em>BOTTOM);
+var btn3 = Ti.UI.createButton({
+    title: &#39;RIGHT</em>BOTTOM&#39;,
+    width: 160,
+    height: 44,
+    top: 400,
+    left: 200
+});
+btn3.addEventListener(&#39;click&#39;, function() {
+    popover3.show({ view: btn3 });
+});
+win.add(btn3);</p>
+
+<p>// LEFT<em>BOTTOM: Arrow at bottom-left, popover extends UP
+var popover4 = createPopover(&#39;LEFT</em>BOTTOM&#39;, ti<em>popover.POPOVER</em>ARROW<em>DIRECTION</em>LEFT<em>BOTTOM);
+var btn4 = Ti.UI.createButton({
+    title: &#39;LEFT</em>BOTTOM&#39;,
+    width: 160,
+    height: 44,
+    top: 460,
+    left: 20
+});
+btn4.addEventListener(&#39;click&#39;, function() {
+    popover4.show({ view: btn4 });
+});
+win.add(btn4);</p>
+
+<p>win.open();
+<code></code>`</p>
+
+<h3>Transition Styles Comparison</h3>
+
+<p>Try each of the four transition styles.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });</p>
+
+<p>var styles = [
+    { label: &#39;Scale (Default)&#39;,   style: &#39;scale&#39; },
+    { label: &#39;Fade&#39;,              style: &#39;fade&#39; },
+    { label: &#39;Translate&#39;,         style: &#39;translate&#39; },
+    { label: &#39;None (Instant)&#39;,    style: &#39;none&#39; }
+];</p>
+
+<p>styles.forEach(function(item, i) {
+    var contentView = Ti.UI.createView({
+        width: 240,
+        height: 140,
+        backgroundColor: &#39;#ffffff&#39;
+    });
+    contentView.add(Ti.UI.createLabel({
+        text: item.label,
+        font: { fontSize: 16, fontWeight: &#39;bold&#39; },
+        color: &#39;#333&#39;,
+        top: 15,
+        left: 15,
+        right: 15
+    }));
+    contentView.add(Ti.UI.createLabel({
+        text: &#39;Transition: &#39; + item.style,
+        font: { fontSize: 13 },
+        color: &#39;#888&#39;,
+        top: 45,
+        left: 15,
+        right: 15
+    }));</p>
+
+<pre><code>var popover = ti_popover.createPopover({
+    contentView: contentView,
+    transitionStyle: item.style,
+    cornerRadius: 12
+});
+
+var button = Ti.UI.createButton({
+    title: item.label,
+    width: 220,
+    height: 44,
+    top: 40 + i * 54,
+    left: 25
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: button });
+});
+win.add(button);</code></pre>
+
+<p>});</p>
+
+<p>win.open();
+<code></code>`</p>
+
+<h3>Popover with TableView</h3>
+
+<p>Show a scrollable table inside the popover.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var data = [
+    &#39;Home&#39;, &#39;Profile&#39;, &#39;Settings&#39;, &#39;Notifications&#39;,
+    &#39;Help &amp; Support&#39;, &#39;About&#39;, &#39;Log Out&#39;
+];</p>
+
+<p>var tableView = Ti.UI.createTableView({
+    data: data.map(function(item) {
+        return { title: item, hasDetail: false };
+    })
+});</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 260,
+    height: 280,
+    backgroundColor: &#39;#ffffff&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Menu&#39;,
+    font: { fontSize: 18, fontWeight: &#39;bold&#39; },
+    color: &#39;#333&#39;,
+    top: 10,
+    left: 15,
+    right: 15,
+    height: 30
+}));
+tableView.top = 40;
+tableView.bottom = 10;
+tableView.left = 0;
+tableView.right = 0;
+contentView.add(tableView);</p>
+
+<p>var popover = ti_popover.createPopover({
+    contentView: contentView,
+    cornerRadius: 12,
+    showsDimBackground: true,
+    dismissOnTapOutside: true
+});</p>
+
+<p>tableView.addEventListener(&#39;click&#39;, function(e) {
+    Ti.API.info(&#39;Selected: &#39; + e.row.title);
+    popover.hide({ animated: true });
+});</p>
+
+<p>var menuButton = Ti.UI.createButton({
+    systemButton: Ti.UI.iPhone.SystemButtonMenu,
+    top: 80,
+    width: 50,
+    height: 50
+});
+menuButton.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: menuButton });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });
+win.add(menuButton);
+win.open();
+<code></code>`</p>
+
+<h3>Background Blur (Behind Popover)</h3>
+
+<p>Apply a frosted glass blur to the area behind the popover.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>// Add some colorful content to the window so the blur is visible
+var win = Ti.UI.createWindow({ backgroundColor: &#39;#ffffff&#39; });
+for (var i = 0; i &lt; 8; i++) {
+    win.add(Ti.UI.createView({
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+        backgroundColor: [&#39;#e74c3c&#39;, &#39;#3498db&#39;, &#39;#2ecc71&#39;, &#39;#f39c12&#39;,
+                          &#39;#9b59b6&#39;, &#39;#1abc9c&#39;, &#39;#e67e22&#39;, &#39;#34495e&#39;][i],
+        top: 60 + Math.floor(i / 4) <em> 100,
+        left: 50 + (i % 4) </em> 90
+    }));
+}</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 240,
+    height: 150,
+    backgroundColor: &#39;rgba(255,255,255,0.15)&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Background Blur&#39;,
+    font: { fontSize: 18, fontWeight: &#39;bold&#39; },
+    color: &#39;#ffffff&#39;,
+    top: 15,
+    left: 15
+}));
+contentView.add(Ti.UI.createLabel({
+    text: &#39;The colorful blocks behind this popover are blurred.&#39;,
+    font: { fontSize: 13 },
+    color: &#39;#ffffff&#39;,
+    top: 45,
+    left: 15,
+    right: 15
+}));</p>
+
+<p>var popover = ti<em>popover.createPopover({
+    contentView: contentView,
+    blurBackground: true,
+    blurEffect: ti</em>popover.BLUR<em>EFFECT</em>STYLE<em>SYSTEM</em>MATERIAL,
+    showsArrow: true,
+    cornerRadius: 14
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Show Blur&#39;,
+    bottom: 60,
+    width: 200,
+    height: 44
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: button });
+});
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<h3>Event Handling</h3>
+
+<p>Respond to popover lifecycle events.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 260,
+    height: 160,
+    backgroundColor: &#39;#ffffff&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Event Demo&#39;,
+    font: { fontSize: 18, fontWeight: &#39;bold&#39; },
+    color: &#39;#333&#39;,
+    top: 15,
+    left: 15
+}));</p>
+
+<p>var logLabel = Ti.UI.createLabel({
+    text: &#39;&#39;,
+    font: { fontSize: 13 },
+    color: &#39;#888&#39;,
+    top: 45,
+    left: 15,
+    right: 15
+});
+contentView.add(logLabel);</p>
+
+<p>var popover = ti_popover.createPopover({
+    contentView: contentView
+});</p>
+
+<p>popover.addEventListener(&#39;hide&#39;, function(e) {
+    Ti.API.info(&#39;[Event] hide — user tapped outside&#39;);
+    logLabel.text = &#39;hide event fired!&#39;;
+});</p>
+
+<p>popover.addEventListener(&#39;closed&#39;, function(e) {
+    Ti.API.info(&#39;[Event] closed — popover fully dismissed&#39;);
+    logLabel.text = &#39;closed event fired!&#39;;
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Events Demo&#39;,
+    top: 100,
+    width: 200,
+    height: 44
+});
+button.addEventListener(&#39;click&#39;, function() {
+    logLabel.text = &#39;Popover shown&#39;;
+    popover.show({ view: button });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<h3>No Arrow, Fade-In Popover</h3>
+
+<p>A minimalist card-style popover without an arrow.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 300,
+    height: 180,
+    backgroundColor: &#39;#ffffff&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Card Popover&#39;,
+    font: { fontSize: 20, fontWeight: &#39;bold&#39; },
+    color: &#39;#2c3e50&#39;,
+    top: 20,
+    left: 20,
+    right: 20
+}));
+contentView.add(Ti.UI.createLabel({
+    text: &#39;No arrow, smooth fade transition, large corner radius, and a subtle shadow.&#39;,
+    font: { fontSize: 14 },
+    color: &#39;#7f8c8d&#39;,
+    top: 55,
+    left: 20,
+    right: 20
+}));
+contentView.add(Ti.UI.createButton({
+    title: &#39;Got it&#39;,
+    bottom: 20,
+    right: 20,
+    width: 100,
+    height: 36
+}));</p>
+
+<p>var popover = ti<em>popover.createPopover({
+    contentView: contentView,
+    showsArrow: false,
+    cornerRadius: 16,
+    shadowRadius: 15,
+    shadowOpacity: 0.15,
+    transitionStyle: ti</em>popover.TRANSITION<em>STYLE</em>FADE,
+    dismissOnTapOutside: true
+});</p>
+
+<p>contentView.children[2].addEventListener(&#39;click&#39;, function() {
+    popover.hide({ animated: true });
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Card Popover&#39;,
+    top: 100,
+    width: 200,
+    height: 44
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: button });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#ecf0f1&#39; });
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<h3>Offset Rect on Source View</h3>
+
+<p>The <code>rect</code> property in <code>show()</code> is an offset relative to the source view&#39;s position. Use it to shift the anchor point without changing the source view reference.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 200,
+    height: 120,
+    backgroundColor: &#39;#ffffff&#39;
+});
+contentView.add(Ti.UI.createLabel({
+    text: &#39;Offset Anchor&#39;,
+    font: { fontSize: 14, fontWeight: &#39;bold&#39; },
+    color: &#39;#333&#39;,
+    top: 15,
+    left: 15
+}));
+contentView.add(Ti.UI.createLabel({
+    text: &#39;The rect shifts the anchor 50px right and 30px down from the button origin.&#39;,
+    font: { fontSize: 12 },
+    color: &#39;#888&#39;,
+    top: 40,
+    left: 15,
+    right: 15
+}));</p>
+
+<p>var popover = ti_popover.createPopover({
+    contentView: contentView
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Show Popover&#39;,
+    width: 180,
+    height: 44,
+    top: 100
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({
+        view: button,
+        rect: { x: 50, y: 30 }  // offset from button origin
+    });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<h3>Programmatically Dismiss with Animation</h3>
+
+<p>Control dismissal from within the popover content.</p>
+
+<p><code></code>`javascript
+var ti_popover = require(&quot;ti.popover&quot;);</p>
+
+<p>var contentView = Ti.UI.createView({
+    width: 260,
+    height: 200,
+    backgroundColor: &#39;#ffffff&#39;
+});</p>
+
+<p>var headerLabel = Ti.UI.createLabel({
+    text: &#39;Dismissible Popover&#39;,
+    font: { fontSize: 18, fontWeight: &#39;bold&#39; },
+    color: &#39;#333&#39;,
+    top: 15,
+    left: 15,
+    right: 15
+});
+contentView.add(headerLabel);</p>
+
+<p>var bodyLabel = Ti.UI.createLabel({
+    text: &#39;Tap any button below to dismiss this popover with a different animation style.&#39;,
+    font: { fontSize: 13 },
+    color: &#39;#666&#39;,
+    top: 45,
+    left: 15,
+    right: 15
+});
+contentView.add(bodyLabel);</p>
+
+<p>var closeScale = Ti.UI.createButton({
+    title: &#39;Close (Scale)&#39;,
+    top: 100,
+    left: 15,
+    width: 105,
+    height: 36
+});
+closeScale.addEventListener(&#39;click&#39;, function() {
+    popover.hide({
+        animated: true,
+        transitionStyle: ti<em>popover.TRANSITION</em>STYLE_SCALE
+    });
+});
+contentView.add(closeScale);</p>
+
+<p>var closeFade = Ti.UI.createButton({
+    title: &#39;Close (Fade)&#39;,
+    top: 100,
+    right: 15,
+    width: 105,
+    height: 36
+});
+closeFade.addEventListener(&#39;click&#39;, function() {
+    popover.hide({
+        animated: true,
+        transitionStyle: ti<em>popover.TRANSITION</em>STYLE_FADE
+    });
+});
+contentView.add(closeFade);</p>
+
+<p>var closeInstant = Ti.UI.createButton({
+    title: &#39;Close (Instant)&#39;,
+    top: 145,
+    left: 15,
+    width: 240,
+    height: 36
+});
+closeInstant.addEventListener(&#39;click&#39;, function() {
+    popover.hide({ animated: false });
+});
+contentView.add(closeInstant);</p>
+
+<p>var popover = ti_popover.createPopover({
+    contentView: contentView,
+    dismissOnTapOutside: true
+});</p>
+
+<p>var button = Ti.UI.createButton({
+    title: &#39;Show&#39;,
+    top: 100,
+    width: 200,
+    height: 44
+});
+button.addEventListener(&#39;click&#39;, function() {
+    popover.show({ view: button });
+});</p>
+
+<p>var win = Ti.UI.createWindow({ backgroundColor: &#39;#f5f5f5&#39; });
+win.add(button);
+win.open();
+<code></code>`</p>
+
+<hr/>
+
+<h2>Important Notes</h2>
+
+<h3>Single Popover</h3>
+
+<p>Only one popover can be displayed at a time. If you call <code>show()</code> on a new popover while another is visible, the existing one is automatically hidden first.</p>
+
+<h3><code>contentView</code> Dimensions</h3>
+
+<p>Set <code>width</code> and <code>height</code> on the <strong>content view</strong> (using DIP values). Setting <code>width</code> and <code>height</code> directly on the popover is not supported — the popover derives its size from the content view.</p>
+
+<h3>Changing Properties While Visible</h3>
+
+<p>Appearance properties (<code>cornerRadius</code>, <code>arrowWidth</code>, <code>borderColor</code>, etc.) can only be changed <strong>before</strong> the first <code>show()</code> call. Changing them while the popover is already displayed has no effect. To apply new settings, create a new popover instance.</p>
+
+<h3>Reduce Transparency</h3>
+
+<p>If the user has enabled <em>Reduce Transparency</em> in <strong>Settings → Accessibility → Display &amp; Text Size</strong>, all blur effects (<code>blurBackground</code> and <code>popoverBlurStyle</code>) are automatically disabled. The popover will use solid colors instead.</p>
+
+<h3>Auto-Detection Priority</h3>
+
+<p>When <code>arrowDirection</code> is set to <code>POPOVER_ARROW_DIRECTION_ANY</code>, the module tries each direction in this order and picks the first one with enough space:</p>
+
+<ol><li><strong>UP</strong> — popover below source, arrow pointing up</li><li><strong>DOWN</strong> — popover above source, arrow pointing down</li><li><strong>LEFT</strong> — popover to the right of source, arrow pointing left</li><li><strong>RIGHT</strong> — popover to the left of source, arrow pointing right</li></ol>
+
+<h3>Safe Area Insets</h3>
+
+<p>The <code>safeAreaInsets</code> property (default: 10 DIP on all sides) prevents the popover from being positioned at the very edge of the screen. Increase these values if your popover overlaps with navigation bars, tab bars, or other UI elements at the screen edges.</p>
+
+<h3><code>rect</code> as Offset</h3>
+
+<p>When passed to <code>show()</code>, the <code>rect</code> property is interpreted as an <strong>offset relative to the source view&#39;s position</strong>. The <code>x</code>/<code>left</code> and <code>y</code>/<code>top</code> values are added to the source view&#39;s origin. If <code>width</code> and <code>height</code> are not set (or are zero), the source view&#39;s own dimensions are used for the anchor rect.</p>
+
+<p><code>javascript
+// Shift anchor point 50px right and 20px down from the button
+popover.show({
+    view: button,
+    rect: { x: 50, y: 20 }
+});
+</code></p>
+
+<h3>Device Rotation</h3>
+
+<p>When the device rotates while a popover is displayed, the popover automatically repositions itself to maintain the correct anchor point relative to the source view. The animation is smooth and the popover adapts to the new screen orientation.</p>
+
+<h3>Edge Clamping with Fallback</h3>
+
+<p>If an extended (corner-anchored) direction would cause the popover to go off-screen, the module automatically falls back to standard centered positioning. For example, <code>RIGHT_TOP</code> near the top-right corner will become a centered <code>RIGHT</code> arrow instead of being clipped.</p>
+
+<h3>Animation Anchor Points</h3>
+
+<p>For extended directions, the scale animation anchor point is set to the appropriate corner (e.g., <code>RIGHT_TOP</code> anchors at top-right). This ensures the popover scales from the arrow position rather than the center, providing a more natural visual effect.</p>
+
+<hr/>
+
+<h2>Architecture</h2>
+
+<p>The popover is <strong>not</strong> based on <code>UIPopoverPresentationController</code>. Instead, it is a fully custom implementation that:</p>
+
+<ul><li>Draws the popover shape (rounded rect + arrow) using <code>UIBezierPath</code> and a <code>CAShapeLayer</code> mask</li><li>Computes positioning relative to the source view&#39;s window coordinates</li><li>Clips the popover to the key window with configurable safe area insets</li><li>Handles outside taps via a <code>UITapGestureRecognizer</code> on the container view</li><li>Animates presentation/dismissal with <code>UIView</code> animations (spring-scale, fade, translate)</li><li>Applies blur via <code>UIVisualEffectView</code> for both the popover body and the background</li></ul>
+
+<p>This approach provides maximum visual control and consistent behavior across all iOS versions and device sizes (iPhone and iPad).</p>
+
+<hr/>
+
+<h2>Author</h2>
+
+<p>Created by Marc Bender<br/>Copyright (c) 2026. All rights reserved.</p>
+
+<h2>License</h2>
+
+<p>MIT License</p>

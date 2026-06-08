@@ -1,0 +1,354 @@
+<h1>ti.imageviewextension Module</h1>
+
+<h2>Description</h2>
+
+<p>A Titanium iOS module that extends <code>Ti.UI.ImageView</code> with advanced image processing capabilities. The module works as a <strong>transparent extension</strong> — simply install it and all ImageView instances gain the new features automatically. No <code>require()</code> needed.</p>
+
+<h3>Key Features</h3>
+
+<ul><li><strong>Animated fade-in</strong> — Smooth fade-in animation for scrollable containers</li><li><strong>Auto-scaling</strong> — Constrain images to max dimensions while maintaining aspect ratio</li><li><strong>Gaussian blur</strong> — Apply blur effects using Core Image</li><li><strong>Average color detection</strong> — Extract dominant color for UI theming</li><li><strong>Performance optimization</strong> — Remove transparency, rasterize layers, tint colors</li><li><strong>Hi-res loading</strong> — Support for @2x/@3x retina images</li><li><strong>Auto-rotate</strong> — Correct image orientation from EXIF data</li></ul>
+
+<hr/>
+
+<h2>Installation</h2>
+
+<p>Add to your <code>tiapp.xml</code>:</p>
+
+<p><code>xml
+&lt;modules&gt;
+    &lt;module version=&quot;1.3.7&quot;&gt;ti.imageviewextension&lt;/module&gt;
+&lt;/modules&gt;
+</code></p>
+
+<p>Place the module zip in <code>modules/iphone/</code> directory. That&#39;s it — all ImageView instances automatically gain extended features.</p>
+
+<hr/>
+
+<h2>Accessing the Module</h2>
+
+<p>This module operates as a <strong>transparent extension</strong> via Objective-C categories on <code>TiUIImageView</code>. You do <strong>not</strong> need to <code>require()</code> it:</p>
+
+<p><code>javascript
+// No require needed!
+var imageView = Ti.UI.createImageView({
+    image: &#39;/myimage.jpg&#39;,
+    animated: true,
+    calcMinMax: true,
+    maxWidth: 300
+});
+</code></p>
+
+<hr/>
+
+<h2>API Reference</h2>
+
+<h3>Properties</h3>
+
+<h4>Animation</h4>
+
+<p>| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| <code>animated</code> | <code>Boolean</code> | <code>false</code> | Smooth fade-in (0.5s) when imageView becomes visible. Re-triggers on re-visibility unless <code>animateOnce: true</code> |
+| <code>animateOnce</code> | <code>Boolean</code> | <code>false</code> | Animation plays only on first appearance |</p>
+
+<h4>Sizing</h4>
+
+<p>| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| <code>calcMinMax</code> | <code>Boolean</code> | <code>false</code> | Scale image to fit within <code>maxWidth</code>/<code>maxHeight</code> while maintaining aspect ratio |
+| <code>maxWidth</code> | <code>Number</code> | Image width | Maximum width for <code>calcMinMax</code> scaling |
+| <code>maxHeight</code> | <code>Number</code> | Image height | Maximum height for <code>calcMinMax</code> scaling |</p>
+
+<h4>Image Processing</h4>
+
+<p>| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| <code>blurredImage</code> | <code>Boolean</code> | <code>false</code> | Apply Gaussian blur using Core Image <code>CIGaussianBlur</code> |
+| <code>blurRadius</code> | <code>Number</code> | <code>15.0</code> | Blur intensity in pixels (higher = more blur) |
+| <code>noTransparency</code> | <code>Boolean</code> | <code>false</code> | Remove alpha channel, fill with <code>backgroundColor</code> |
+| <code>hires</code> | <code>Boolean</code> | <code>false</code> | Load @2x/@3x resolution version of image |
+| <code>autorotate</code> | <code>Boolean</code> | <code>true</code> | Auto-correct orientation from EXIF data |</p>
+
+<h4>Rendering</h4>
+
+<p>| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| <code>shouldRasterize</code> | <code>Boolean</code> | <code>false</code> | Rasterize layer for improved scrolling performance |
+| <code>tintColor</code> | <code>String</code> | <code>null</code> | Apply tint color (image becomes template/silhouette) |
+| <code>backgroundColor</code> | <code>String</code> | <code>null</code> | Background color (required for <code>noTransparency</code>) |</p>
+
+<h4>Placeholder</h4>
+
+<p>| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| <code>defaultImage</code> | <code>String</code> | Built-in placeholder | Path to placeholder during remote image load |
+| <code>preventDefaultImage</code> | <code>Boolean</code> | <code>false</code> | Hide built-in Titanium placeholder |</p>
+
+<h4>Internal Flags</h4>
+
+<p>| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| <code>averageColorDone</code> | <code>Boolean</code> | <code>false</code> | Tracks if average color calculated. Set <code>false</code> to recalculate |
+| <code>calcMinMaxDone</code> | <code>Boolean</code> | <code>false</code> | Tracks if calcMinMax applied |
+| <code>averageColor</code> | <code>String</code> | <code>null</code> | Hex color string (e.g., <code>#39ADE1</code>) after calculation |</p>
+
+<hr/>
+
+<h3>Events</h3>
+
+<h4><code>averageColor</code></h4>
+
+<p>Fired <strong>once</strong> when average color is calculated.</p>
+
+<p><strong>Event Object:</strong>
+- <code>color</code> (<code>Array</code>): <code>[red, green, blue]</code> (0-255)
+- <code>averageColor</code> (<code>String</code>): Hex color (e.g., <code>#39ADE1</code>)</p>
+
+<p><code></code>`javascript
+imageView.addEventListener(&#39;averageColor&#39;, function(e) {
+    console.log(&#39;RGB:&#39;, e.color);        // [57, 173, 225]
+    console.log(&#39;Hex:&#39;, e.averageColor);  // &#39;#39ADE1&#39;</p>
+
+<pre><code>win.backgroundColor = e.averageColor;</code></pre>
+
+<p>});
+<code></code>`</p>
+
+<p><strong>Notes:</strong>
+- Fires only once per imageView lifecycle
+- Set <code>averageColorDone: false</code> to force recalculation
+- Listener must be attached before image is set</p>
+
+<h4><code>imageMinMax</code></h4>
+
+<p>Fired after <code>calcMinMax</code> scaling completes.</p>
+
+<p><strong>Event Object:</strong>
+- <code>width</code> (<code>Number</code>): Scaled width
+- <code>height</code> (<code>Number</code>): Scaled height</p>
+
+<p><code></code>`javascript
+imageView.addEventListener(&#39;imageMinMax&#39;, function(e) {
+    console.log(&#39;Scaled to:&#39;, e.width + &#39;x&#39; + e.height);</p>
+
+<pre><code>imageView.width = e.width;
+imageView.height = e.height;</code></pre>
+
+<p>});
+<code></code>`</p>
+
+<hr/>
+
+<h2>Usage Examples</h2>
+
+<h3>Fade-In Animation in TableView</h3>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/photo.jpg&#39;,
+    animated: true,
+    animateOnce: false  // Re-animate on scroll back into view
+});
+</code></p>
+
+<h3>Constrained Sizing</h3>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/landscape.jpg&#39;,
+    calcMinMax: true,
+    maxWidth: 320,
+    maxHeight: 240
+});
+</code></p>
+
+<h3>Blurred Background</h3>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/background.jpg&#39;,
+    blurredImage: true,
+    blurRadius: 25,
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL
+});
+</code></p>
+
+<h3>Average Color Detection</h3>
+
+<p><code></code>`javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/hero.jpg&#39;,
+    averageColorDone: false
+});</p>
+
+<p>imageView.addEventListener(&#39;averageColor&#39;, function(e) {
+    win.backgroundColor = e.averageColor;
+});
+<code></code>`</p>
+
+<h3>No Transparency (Performance)</h3>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/logo.png&#39;,
+    noTransparency: true,
+    backgroundColor: &#39;#ffffff&#39;
+});
+</code></p>
+
+<h3>Tint Color</h3>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/icon.png&#39;,
+    tintColor: &#39;#365b85&#39;
+});
+</code></p>
+
+<h3>Complete TableView Example</h3>
+
+<p><code></code>`javascript
+var tableView = Ti.UI.createTableView();</p>
+
+<p>for (var i = 0; i &lt; 50; i++) {
+    var row = Ti.UI.createTableViewRow({ height: Ti.UI.SIZE });</p>
+
+<pre><code>var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/photos/photo_&#39; + i + &#39;.jpg&#39;,
+    left: 10, top: 10, bottom: 10,
+    width: 80, height: 80,
+
+    animated: true,
+    animateOnce: false,
+    calcMinMax: true,
+    maxWidth: 80,
+    maxHeight: 80,
+    shouldRasterize: true
+});
+
+imageView.addEventListener(&#39;averageColor&#39;, function(e) {
+    this.backgroundColor = e.averageColor;
+});
+
+row.add(imageView);
+tableView.appendRow(row);</code></pre>
+
+<p>}</p>
+
+<p>win.add(tableView);
+<code></code>`</p>
+
+<hr/>
+
+<h2>Performance Tips</h2>
+
+<h3>For Scrolling Containers</h3>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/photo.jpg&#39;,
+    animated: true,
+    animateOnce: false,
+    shouldRasterize: true,    // Layer caching
+    noTransparency: true,     // No compositing
+    backgroundColor: &#39;#fff&#39;   // Required for noTransparency
+});
+</code></p>
+
+<h3>General Guidelines</h3>
+
+<ol><li><strong><code>shouldRasterize: true</code></strong> — For imageView in TableView/ListView/ScrollView</li><li><strong><code>noTransparency: true</code></strong> — When alpha channel isn&#39;t needed</li><li><strong><code>animateOnce: true</code></strong> — For static images (avoid re-animation)</li><li><strong><code>calcMinMax</code></strong> — Reduces memory footprint of large images</li></ol>
+
+<h3>Architecture</h3>
+
+<ul><li>All processing runs on <strong>background threads</strong></li><li>Shared <code>CIContext</code> for blur operations</li><li>Early-exit detection skips duplicate loads</li><li>Property caching reduces proxy lookups</li></ul>
+
+<hr/>
+
+<h2>Troubleshooting</h2>
+
+<h3>Events Fire Twice</h3>
+
+<p><strong>Cause:</strong> TableViewExtension height caching or cell reuse.</p>
+
+<p><strong>Solution:</strong> Module has built-in early-exit. Ensure properties set only once:</p>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/photo.jpg&#39;,
+    calcMinMax: true,
+    maxWidth: 120,
+    maxHeight: 69,
+    calcMinMaxDone: false,
+    averageColorDone: false
+});
+</code></p>
+
+<h3>Average Color Not Calculated</h3>
+
+<p><strong>Solution:</strong> Attach listener before setting image:</p>
+
+<p><code></code>`javascript
+var imageView = Ti.UI.createImageView({
+    averageColorDone: false
+});</p>
+
+<p>imageView.addEventListener(&#39;averageColor&#39;, function(e) {
+    console.log(&#39;Color:&#39;, e.averageColor);
+});</p>
+
+<p>imageView.image = &#39;/assets/photo.jpg&#39;;  // Set after listener
+<code></code>`</p>
+
+<h3>Animation Not Working in TableView</h3>
+
+<p><strong>Solution:</strong> Use <code>animateOnce: false</code>:</p>
+
+<p><code>javascript
+var imageView = Ti.UI.createImageView({
+    image: &#39;/assets/photo.jpg&#39;,
+    animated: true,
+    animateOnce: false  // Re-animate on visibility
+});
+</code></p>
+
+<hr/>
+
+<h2>Compatibility</h2>
+
+<p>| Platform | Minimum |
+|----------|---------|
+| Titanium SDK | 13.2.0+ |
+| iOS | 13.0+ |
+| Architecture | arm64, x86_64 |</p>
+
+<hr/>
+
+<h2>Changelog</h2>
+
+<h3>v1.3.7 (2026-06-02)</h3>
+
+<ul><li>✅ Fixed duplicate event firing with TableViewExtension height caching</li><li>✅ Flag reset now occurs after early-exit checks</li><li>✅ Improved cell reuse compatibility</li><li>✅ noTransparency works in both direct image and loadUrl paths</li><li>✅ tintColor uses silhouette/template mode (solid color)</li><li>✅ noTransparency removes alpha channel, fills with backgroundColor (no blended layers)</li><li>✅ Comprehensive documentation update (all properties, events, examples)</li><li>✅ Added troubleshooting section</li><li>✅ Updated manifest (author, license, minsdk: 13.2.0)</li><li>✅ Example app with 10 feature demonstrations</li></ul>
+
+<h3>v1.3.6 - v1.3.2 (2026-01-20)</h3>
+
+<ul><li>Early-exit cache, property comparison, cell reuse fixes</li></ul>
+
+<h3>v1.1.0 (2026-06-01)</h3>
+
+<ul><li>Average color fix, background thread processing, shared CIContext</li><li>Early-exit for duplicates, property caching, modern Obj-C syntax</li></ul>
+
+<h3>v1.0.3 (2026-05-31)</h3>
+
+<ul><li>Initial release</li></ul>
+
+<hr/>
+
+<h2>License</h2>
+
+<p>Apache 2.0 — See <a href="../LICENSE">LICENSE</a></p>
+
+<h2>Author</h2>
+
+<p>Created by <strong>Marc Bender</strong> — Copyright © 2022-2026</p>

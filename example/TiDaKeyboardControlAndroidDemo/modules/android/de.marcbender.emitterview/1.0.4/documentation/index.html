@@ -1,0 +1,564 @@
+<h1>titanium-emitterview Module</h1>
+
+<h2>Description</h2>
+
+<p>A cross-platform Titanium module for creating beautiful particle emission effects. Particles are emitted from a source view and float in the configured direction with natural sinusoidal sway animations.</p>
+
+<p>Built with advanced RainConfetti-style features: native shape generation (confetti, triangles, stars, diamonds), text particles, velocity/spin control, intensity-based birth rates, and full animation lifecycle management.</p>
+
+<p><strong>Common use cases:</strong>
+- Social media &quot;Like&quot; reactions (hearts floating up)
+- Celebration effects (confetti bursts)
+- Weather effects (rain, snow, falling leaves)
+- Ambient particle backgrounds
+- Interactive feedback animations
+- Text-based particle spells/quotes</p>
+
+<h2>Accessing the Module</h2>
+
+<p><code>javascript
+var emitterModule = require(&#39;de.marcbender.emitterview&#39;);
+</code></p>
+
+<hr/>
+
+<h2>Reference</h2>
+
+<h3><code>createView(properties)</code></h3>
+
+<p>Creates a new emitter view that can be added to any window or container view.</p>
+
+<p><strong>Returns:</strong> <code>Ti.UI.View</code> — The emitter view instance</p>
+
+<h4>Core Properties</h4>
+
+<p>| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| <code>amplitude</code> | Number | No | 8 | Minimum horizontal/vertical sway in pixels. Particles oscillate between this and <code>maxAmplitude</code>. |
+| <code>maxAmplitude</code> | Number | No | 14 | Maximum horizontal/vertical sway in pixels. Larger values create wider oscillation. |
+| <code>duration</code> | Number | No | 3.0 | Minimum animation duration in seconds. Each particle gets a random duration between <code>duration</code> and <code>maxDuration</code>. |
+| <code>maxDuration</code> | Number | No | 3.5 | Maximum animation duration in seconds. |
+| <code>direction</code> | Number | No | 0 | Emission direction: <code>0</code>=up, <code>1</code>=down, <code>2</code>=left, <code>3</code>=right |
+| <code>particleImages</code> | Array | <em>See below</em> | — | Array of images to use as particles. Accepts: String (file path), <code>Ti.Blob</code>, <code>Ti.Filesystem.File</code>, <code>Ti.UI.Image</code>. |</p>
+
+<h4>RainConfetti-style Properties</h4>
+
+<p>| Property | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| <code>particleType</code> | Number | No | 0 | Particle rendering mode (see table below) |
+| <code>intensity</code> | Number | No | 0.5 | Emission birth rate: <code>0.0</code> (slow) → <code>1.0</code> (fast). Controls particles emitted per frame. |
+| <code>colors</code> | Array | No | 7-color palette | Array of hex color strings (e.g. <code>[&#39;#FF0000&#39;, &#39;#00FF00&#39;]</code>). Used for native shape generation. |
+| <code>velocity</code> | Number | No | 350 | Base particle fall/travel speed in px/s. |
+| <code>velocityRange</code> | Number | No | 80 | Speed variance range. Actual velocity = <code>velocity ± velocityRange/2</code>. |
+| <code>spin</code> | Number | No | 0 | Rotation angle in degrees per particle lifecycle. <code>0</code> = no rotation. |
+| <code>spinRange</code> | Number | No | 0 | Spin variance range. Actual spin = <code>spin ± spinRange/2</code>. |
+| <code>text</code> | String | No | <code>&quot;&quot;</code> | Text string split into individual character particles. |
+| <code>fontSize</code> | Number | No | 24 | Font size for text-based particles (when <code>particleType=5</code>). |
+| <code>autoStopDuration</code> | Number | No | 0 | Auto-stop emission after N seconds. <code>0</code> = disabled. |
+| <code>autoRemove</code> | Boolean | No | <code>false</code> | Automatically remove emitter view from hierarchy when stopped. |</p>
+
+<h4>Particle Types</h4>
+
+<p>| Value | Constant | Description |
+|-------|----------|-------------|
+| <code>0</code> | <code>PARTICLE_CUSTOM</code> | Custom images from <code>particleImages</code> array |
+| <code>1</code> | <code>PARTICLE_CONFETTI</code> | Rectangular confetti pieces (native shape) |
+| <code>2</code> | <code>PARTICLE_TRIANGLE</code> | Triangle shapes (native shape) |
+| <code>3</code> | <code>PARTICLE_STAR</code> | 5-point star shapes (native shape) |
+| <code>4</code> | <code>PARTICLE_DIAMOND</code> | Diamond shapes (native shape) |
+| <code>5</code> | <code>PARTICLE_TEXT</code> | Individual characters from <code>text</code> property |</p>
+
+<blockquote><p><strong>Note:</strong> For types 1–5, <code>particleImages</code> is not required. Particles are generated natively using <code>colors</code> array.</p></blockquote>
+
+<h4>Standard View Properties</h4>
+
+<p>All standard Titanium view properties are supported: <code>top</code>, <code>left</code>, <code>right</code>, <code>bottom</code>, <code>width</code>, <code>height</code>, <code>zIndex</code>, <code>visible</code>, <code>opacity</code>, <code>backgroundColor</code>, etc.</p>
+
+<hr/>
+
+<h3><code>emitImage(options)</code></h3>
+
+<p>Emits a single particle from the specified source view. The particle appears at the center of <code>sourceView</code> and animates in the configured direction.</p>
+
+<p><strong>Parameters:</strong></p>
+
+<p>| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| <code>sourceView</code> | <code>Ti.UI.View</code> | <strong>Yes</strong> | — | The view to emit particles from. Particles originate from the center of this view. |
+| <code>id</code> | Number | No | — | Emit a specific image (1-based index from <code>particleImages</code>). Mutually exclusive with <code>startId</code>/<code>endId</code>. |
+| <code>startId</code> | Number | No | — | Start of random image range (1-based). Must be used with <code>endId</code>. |
+| <code>endId</code> | Number | No | — | End of random image range (1-based). Must be used with <code>startId</code>. |</p>
+
+<p><strong>Behavior:</strong>
+- If <code>id</code> is specified → emit that specific image only
+- If <code>startId</code> + <code>endId</code> are specified → emit random image from that range
+- If neither is specified → emit random image from entire <code>particleImages</code> array</p>
+
+<p><strong>Returns:</strong> <code>void</code></p>
+
+<hr/>
+
+<h3>Animation Control Methods</h3>
+
+<p>Full lifecycle management for continuous particle emission.</p>
+
+<h4><code>start()</code></h4>
+
+<p>Starts continuous particle emission based on <code>intensity</code> setting. Emits particles every frame using the native animation engine.</p>
+
+<p><code>javascript
+emitterView.start();
+</code></p>
+
+<h4><code>stop()</code></h4>
+
+<p>Stops emission and cleans up active particles. If <code>autoRemove</code> is <code>true</code>, the emitter view is removed from its parent.</p>
+
+<p><code>javascript
+emitterView.stop();
+</code></p>
+
+<h4><code>pause()</code></h4>
+
+<p>Pauses emission temporarily. Active particles continue their animations but no new particles are emitted.</p>
+
+<p><code>javascript
+emitterView.pause();
+</code></p>
+
+<h4><code>resume()</code></h4>
+
+<p>Resumes emission after a pause.</p>
+
+<p><code>javascript
+emitterView.resume();
+</code></p>
+
+<h4><code>isActive()</code></h4>
+
+<p>Returns <code>true</code> if the emitter is currently running and not paused.</p>
+
+<p><code>javascript
+if (emitterView.isActive()) {
+    Ti.API.info(&#39;Emitter is active&#39;);
+}
+</code></p>
+
+<hr/>
+
+<h3>Direction Constants</h3>
+
+<p>| Value | Name | Description |
+|-------|------|-------------|
+| <code>0</code> | <strong>UP</strong> (default) | Particles float upward. Ideal for social media reactions. |
+| <code>1</code> | <strong>DOWN</strong> | Particles fall downward. Use for rain, snow, falling effects. |
+| <code>2</code> | <strong>LEFT</strong> | Particles move left. Use for wind effects. |
+| <code>3</code> | <strong>RIGHT</strong> | Particles move right. Use for wind effects. |</p>
+
+<hr/>
+
+<h2>Usage</h2>
+
+<h3>Example 1: Classic Heart Emitter</h3>
+
+<p><code></code>`javascript
+var emitterModule = require(&#39;de.marcbender.emitterview&#39;);</p>
+
+<p>var emitterView = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleImages: [&#39;/images/heart.png&#39;],
+    direction: 0, // up
+    amplitude: 6,
+    maxAmplitude: 12,
+    duration: 2.5,
+    maxDuration: 3.5
+});</p>
+
+<p>win.add(emitterView);</p>
+
+<p>// Emit from a button
+likeButton.addEventListener(&#39;click&#39;, function() {
+    emitterView.emitImage({
+        sourceView: likeButton
+    });
+});
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 2: Confetti Celebration (Native Shapes)</h3>
+
+<p><code></code>`javascript
+var emitterView = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleType: 1, // confetti
+    direction: 1, // down
+    intensity: 0.8,
+    colors: [&#39;#FF6B6B&#39;, &#39;#4ECDC4&#39;, &#39;#FFE66D&#39;, &#39;#A8E6CF&#39;, &#39;#FF8B94&#39;],
+    velocity: 400,
+    velocityRange: 120,
+    spin: 360,
+    spinRange: 180,
+    autoStopDuration: 5 // auto-stops after 5 seconds
+});</p>
+
+<p>win.add(emitterView);</p>
+
+<p>celebrateButton.addEventListener(&#39;click&#39;, function() {
+    emitterView.start();
+});
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 3: Star Shower with Custom Colors</h3>
+
+<p><code></code>`javascript
+var starEmitter = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleType: 3, // star
+    direction: 1, // down
+    intensity: 0.6,
+    colors: [&#39;#FFD700&#39;, &#39;#FFF8DC&#39;, &#39;#FFFFE0&#39;, &#39;#F0E68C&#39;],
+    velocity: 300,
+    velocityRange: 60,
+    spin: 180,
+    spinRange: 90,
+    amplitude: 4,
+    maxAmplitude: 8
+});</p>
+
+<p>win.add(starEmitter);</p>
+
+<p>// Control manually
+startButton.addEventListener(&#39;click&#39;, function() {
+    if (!starEmitter.isActive()) {
+        starEmitter.start();
+    }
+});</p>
+
+<p>pauseButton.addEventListener(&#39;click&#39;, function() {
+    if (starEmitter.isActive()) {
+        starEmitter.pause();
+    } else {
+        starEmitter.resume();
+    }
+});</p>
+
+<p>stopButton.addEventListener(&#39;click&#39;, function() {
+    starEmitter.stop();
+});
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 4: Text Particle Spell</h3>
+
+<p><code></code>`javascript
+var textEmitter = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleType: 5, // text
+    text: &#39;MAGIC✨✨✨&#39;,
+    fontSize: 32,
+    direction: 0, // up
+    intensity: 0.4,
+    colors: [&#39;#FF69B4&#39;, &#39;#FF1493&#39;, &#39;#DB7093&#39;, &#39;#FFB6C1&#39;],
+    velocity: 250,
+    velocityRange: 50,
+    spin: 720,
+    spinRange: 360,
+    autoStopDuration: 8
+});</p>
+
+<p>win.add(textEmitter);</p>
+
+<p>castSpellButton.addEventListener(&#39;click&#39;, function() {
+    textEmitter.start();
+});
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 5: Multi-Shape Particle Mix</h3>
+
+<p><code></code>`javascript
+var diamondEmitter = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleType: 4, // diamond
+    direction: 2, // left
+    intensity: 0.7,
+    colors: [&#39;#00CED1&#39;, &#39;#20B2AA&#39;, &#39;#3CB371&#39;, &#39;#48D1CC&#39;],
+    velocity: 500,
+    velocityRange: 100,
+    amplitude: 3,
+    maxAmplitude: 6,
+    duration: 2.0,
+    maxDuration: 2.5
+});</p>
+
+<p>win.add(diamondEmitter);</p>
+
+<p>diamondEmitter.start();
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 6: Triangle Rain Effect</h3>
+
+<p><code></code>`javascript
+var triangleEmitter = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleType: 2, // triangle
+    direction: 1, // down
+    intensity: 0.9,
+    colors: [&#39;#87CEEB&#39;, &#39;#B0E0E6&#39;, &#39;#ADD8E6&#39;, &#39;#E0FFFF&#39;],
+    velocity: 600,
+    velocityRange: 150,
+    amplitude: 1,
+    maxAmplitude: 3,
+    duration: 1.5,
+    maxDuration: 2.0,
+    autoRemove: true
+});</p>
+
+<p>// Add to a container that will be removed after animation
+var rainContainer = Ti.UI.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL
+});
+rainContainer.add(triangleEmitter);
+win.add(rainContainer);</p>
+
+<p>rainButton.addEventListener(&#39;click&#39;, function() {
+    triangleEmitter.start();
+    // Auto-removes after stop due to autoRemove: true
+});
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 7: Dynamic Emoji Particles (Legacy Mode)</h3>
+
+<p>Generate particles from emoji labels (no external files needed):</p>
+
+<p><code></code>`javascript
+var emojis = [&#39;❤️&#39;, &#39;🧡&#39;, &#39;💛&#39;, &#39;💚&#39;, &#39;💙&#39;, &#39;💜&#39;];
+var particleImages = emojis.map(function(emoji) {
+    return Ti.UI.createLabel({
+        text: emoji,
+        font: { fontSize: 30 }
+    }).toImage();
+});</p>
+
+<p>var emitterView = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleType: 0, // custom (uses particleImages)
+    direction: 0, // up
+    particleImages: particleImages
+});</p>
+
+<p>win.add(emitterView);</p>
+
+<p>likeButton.addEventListener(&#39;click&#39;, function() {
+    emitterView.emitImage({ sourceView: likeButton });
+});
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 8: Continuous Celebration with Auto-Stop</h3>
+
+<p><code></code>`javascript
+var celebration = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleType: 1, // confetti
+    direction: 1,
+    intensity: 1.0, // maximum intensity
+    colors: [&#39;#FF0000&#39;, &#39;#FF7F00&#39;, &#39;#FFFF00&#39;, &#39;#00FF00&#39;, &#39;#0000FF&#39;, &#39;#4B0082&#39;, &#39;#9400D3&#39;],
+    velocity: 450,
+    velocityRange: 150,
+    spin: 720,
+    spinRange: 360,
+    autoStopDuration: 10 // stops after 10 seconds automatically
+});</p>
+
+<p>win.add(celebration);</p>
+
+<p>celebration.start();
+// No need to call stop() — it happens automatically
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 9: Selective Image Emission (Legacy)</h3>
+
+<p>Control which particles are emitted with custom images:</p>
+
+<p><code></code>`javascript
+var customEmitter = emitterModule.createView({
+    width: Ti.UI.FILL,
+    height: Ti.UI.FILL,
+    particleImages: [&#39;/images/star.png&#39;, &#39;/images/heart.png&#39;, &#39;/images/diamond.png&#39;],
+    direction: 0
+});</p>
+
+<p>// Always emit a specific image (id: 1 = star.png)
+customEmitter.emitImage({ sourceView: button, id: 1 });</p>
+
+<p>// Random from specific range (hearts and diamonds only)
+customEmitter.emitImage({ sourceView: button, startId: 2, endId: 3 });</p>
+
+<p>// Random from entire array (default behavior)
+customEmitter.emitImage({ sourceView: button });
+<code></code>`</p>
+
+<hr/>
+
+<h3>Example 10: Multi-Direction Burst</h3>
+
+<p>Create a burst effect with particles in all directions:</p>
+
+<p><code></code>`javascript
+var directions = [0, 1, 2, 3]; // up, down, left, right
+var emitters = [];</p>
+
+<p>directions.forEach(function(dir) {
+    var emitter = emitterModule.createView({
+        width: Ti.UI.FILL,
+        height: Ti.UI.FILL,
+        particleType: 1, // confetti
+        direction: dir,
+        intensity: 0.8,
+        colors: [&#39;#FF6B6B&#39;, &#39;#4ECDC4&#39;, &#39;#FFE66D&#39;],
+        velocity: 500,
+        velocityRange: 100,
+        spin: 360,
+        spinRange: 180
+    });
+    win.add(emitter);
+    emitters.push(emitter);
+});</p>
+
+<p>burstButton.addEventListener(&#39;click&#39;, function() {
+    emitters.forEach(function(emitter) {
+        emitter.start();
+    });</p>
+
+<pre><code>setTimeout(function() {
+    emitters.forEach(function(emitter) {
+        emitter.stop();
+    });
+}, 3000);</code></pre>
+
+<p>});
+<code></code>`</p>
+
+<hr/>
+
+<h2>Platform Notes</h2>
+
+<h3>iOS</h3>
+
+<p>| Feature | Details |
+|---------|---------|
+| <strong>Animation Engine</strong> | Core Animation (<code>CAKeyframeAnimation</code>) |
+| <strong>Frame Rate</strong> | 60fps (120fps on ProMotion devices) |
+| <strong>Emission Driver</strong> | <code>CADisplayLink</code> (frame-synced) |
+| <strong>Shape Generation</strong> | <code>UIGraphicsImageRenderer</code> (modern, thread-safe) |
+| <strong>Particle Cap</strong> | 200 concurrent particles |
+| <strong>Image Caching</strong> | <code>NSCache</code> (max 50 images) |
+| <strong>Path Points</strong> | 40 key points per trajectory |
+| <strong>Memory</strong> | Proper layer cleanup in <code>dealloc</code> |
+| <strong>Scaling</strong> | <code>traitCollection.displayScale</code> (no deprecated APIs) |
+| <strong>Minimum iOS</strong> | 12.0+ |</p>
+
+<h3>Android</h3>
+
+<p>| Feature | Details |
+|---------|---------|
+| <strong>Animation Engine</strong> | Property Animators (<code>ObjectAnimator</code>) |
+| <strong>Emission Driver</strong> | <code>Choreographer</code> (vsync-synced) |
+| <strong>Hardware Accel</strong> | <code>LAYER_TYPE_HARDWARE</code> for GPU rendering |
+| <strong>Shape Generation</strong> | Native <code>Canvas</code>/<code>Path</code>/<code>Paint</code> |
+| <strong>Particle Cap</strong> | 200 concurrent particles |
+| <strong>View Pooling</strong> | 30 <code>ImageView</code> instances reused |
+| <strong>Random</strong> | <code>ThreadLocalRandom</code> (zero allocation) |
+| <strong>Minimum Android</strong> | API 21+ (5.0 Lollipop) |</p>
+
+<hr/>
+
+<h2>Performance Tips</h2>
+
+<h3>Best Practices</h3>
+
+<ol><li><strong>Pre-generate images</strong> — Create all particle images once at startup</li><li><strong>Use small images</strong> — 32×32 to 64×64 pixels is ideal</li><li><strong>Reuse image arrays</strong> — Don&#39;t recreate <code>particleImages</code> on each emit</li><li><strong>Limit concurrent particles</strong> — The 200-particle cap prevents issues</li><li><strong>Use <code>touchstart</code> over <code>click</code></strong> — Faster response for emission</li><li><strong>Consider direction</strong> — Up/down animations are simpler than left/right</li><li><strong>Use native shapes</strong> — Types 1–5 avoid image loading overhead</li><li><strong>Tune intensity</strong> — Lower values for background effects, higher for celebrations</li></ol>
+
+<h3>What to Avoid</h3>
+
+<ol><li><strong>Large images</strong> — 200×200+ pixel images hurt performance</li><li><strong>Tight loops</strong> — Use <code>setTimeout</code> for staggered emissions</li><li><strong>Recreating emitters</strong> — Create once, reuse for all emissions</li><li><strong>Modifying <code>particleImages</code> at runtime</strong> — Set once during init</li><li><strong>Exceeding 200 particles</strong> — The cap exists for memory safety</li><li><strong>Too many colors</strong> — Keep color arrays under 10 items for shape rendering</li></ol>
+
+<hr/>
+
+<h2>Troubleshooting</h2>
+
+<h3>Particles don&#39;t appear</h3>
+
+<ul><li>Ensure <code>sourceView</code> is a valid <code>Ti.UI.View</code> added to the hierarchy</li><li>For native shapes (types 1–5), ensure <code>colors</code> array is valid</li><li>For text (type 5), ensure <code>text</code> property is non-empty</li><li>Verify the emitter view has non-zero width and height</li></ul>
+
+<h3>Particles appear distorted</h3>
+
+<ul><li>Use appropriately sized images for device pixel density</li><li>iOS handles <code>contentsScale</code> automatically via <code>traitCollection</code></li><li>Android uses density-aware bitmap generation</li></ul>
+
+<h3>Performance issues</h3>
+
+<ul><li>Reduce <code>maxAmplitude</code> for simpler animations</li><li>Use fewer unique images in <code>particleImages</code></li><li>Consider reducing <code>duration</code> for faster particle lifecycle</li><li>Lower <code>intensity</code> for continuous emitters</li><li>Reduce <code>spin</code> values (rotation is computationally expensive)</li></ul>
+
+<h3>Memory warnings</h3>
+
+<ul><li>Reduce the number of images in <code>particleImages</code></li><li>Use smaller image dimensions</li><li>Avoid creating new images in event handlers</li><li>Use <code>autoRemove: true</code> for temporary emitters</li></ul>
+
+<h3>Animation control not working</h3>
+
+<ul><li>Call <code>start()</code> before <code>pause()</code>/<code>resume()</code>/<code>stop()</code></li><li>Check <code>isActive()</code> before calling control methods</li><li><code>autoStopDuration</code> will call <code>stop()</code> automatically</li></ul>
+
+<hr/>
+
+<h2>Author</h2>
+
+<p><strong>Marc Bender</strong></p>
+
+<ul><li>Module ID: <code>de.marcbender.emitterview</code></li><li>Platforms: iOS 12.0+, Android 5.0+</li><li>Based on RainConfetti design patterns</li></ul>
+
+<hr/>
+
+<h2>License</h2>
+
+<p>MIT License</p>
+
+<p>Copyright (c) 2017-2026 Marc Bender</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.</p>
+
+<p>THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</p>
