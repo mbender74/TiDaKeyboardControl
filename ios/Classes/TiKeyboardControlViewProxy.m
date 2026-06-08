@@ -640,7 +640,10 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
         kvoCallCount++;
         
         // Log EVERY call to see actual frequency
-        NSLog(@"[KVO-FREQ] call#%d | accY=%.1f (delta=%.1f)", kvoCallCount, inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.origin.y - lastAccY);
+        NSLog(@"[KVO] call#%d | accY=%.1f (delta=%.1f) | frame={{%.0f,%.0f},{%.0f,%.0f}}",
+              kvoCallCount, inputAccessoryViewFrame.origin.y, inputAccessoryViewFrame.origin.y - lastAccY,
+              inputAccessoryViewFrame.origin.x, inputAccessoryViewFrame.origin.y,
+              inputAccessoryViewFrame.size.width, inputAccessoryViewFrame.size.height);
         lastAccY = inputAccessoryViewFrame.origin.y;
 
         /* Performance #3: skip expensive operations if translation hasn't changed during swipe */
@@ -1308,6 +1311,14 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
     // In this case, let KVO callbacks handle the toolbar tracking with direct CALayer updates
     // instead of using a fixed UIView animation that will desync from the keyboard.
     BOOL isSpringAnimation = (keyboardVisible && !CGRectIsNull(self->initialAccessoryViewFrame));
+    
+    // Log keyboard frame info
+    CGRect keyboardStartFrame;
+    [[notification.userInfo valueForKey:UIKeyboardFrameBeginUserInfoKey] getValue:&keyboardStartFrame];
+    NSLog(@"[KEYBOARD] WillShow: start={{%.0f,%.0f},{%.0f,%.0f}} end={{%.0f,%.0f},{%.0f,%.0f}} duration=%f curve=%ld",
+          keyboardStartFrame.origin.x, keyboardStartFrame.origin.y, keyboardStartFrame.size.width, keyboardStartFrame.size.height,
+          keyboardEndFrameWindow.origin.x, keyboardEndFrameWindow.origin.y, keyboardEndFrameWindow.size.width, keyboardEndFrameWindow.size.height,
+          keyboardTransitionDuration, (long)self->animationCurve);
 
     //     NSLog(@"[TiDAKBC] === keyboardWillShow | curve=%ld, duration=%f, isSpring=%d, keyboardFrame={{%f,%f},{%f,%f}} ===",
     //           (long)self->animationCurve, keyboardTransitionDuration, isSpringAnimation,
