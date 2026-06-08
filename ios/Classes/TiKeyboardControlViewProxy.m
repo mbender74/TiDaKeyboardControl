@@ -1512,7 +1512,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             __strong TiKeyboardControlViewProxy *strongSelf = self;
             [UIView animateWithDuration:toolbarDuration
                                     delay:delay
-                        usingSpringWithDamping:0.6
+                        usingSpringWithDamping:1.0
                               initialSpringVelocity:0.0
                                             options:UIViewAnimationOptionBeginFromCurrentState
                                          animations:^{
@@ -1521,7 +1521,7 @@ static inline UIViewAnimationOptions AnimationOptionsForCurve(UIViewAnimationCur
             } completion:^(BOOL finished) {
                 NSLog(@"[TOOLBAR] Anim complete: finalTransform.ty=%.1f", strongSelf->toolbarview.layer.affineTransform.ty);
             }];
-            NSLog(@"[TOOLBAR] Spring anim: toolbarDist=%.1f keyboardDist=%.1f delay=%.3fs duration=%.3fs damping=0.6", 
+            NSLog(@"[TOOLBAR] Spring anim: toolbarDist=%.1f keyboardDist=%.1f delay=%.3fs duration=%.3fs damping=1.0", 
                   toolbarDistance, keyboardDistance, delay, toolbarDuration);
         }
         self->settledShift = trans;
